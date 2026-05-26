@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-@(k#&dxsn1jl3$z78&1yti7ktc7xnan2+t+k*5%#cybzcmyb2e
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['sonjindev.pythonanywhere.com', 'www.sonjindev.pythonanywhere.com', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -124,3 +124,6 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 DEFAULT_FROM_EMAIL = 'no-reply@control-asistencia.local'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
