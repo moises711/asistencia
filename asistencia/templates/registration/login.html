@@ -1,0 +1,44 @@
+{% extends "asistencia/base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="min-h-[75vh] grid lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
+    <div class="space-y-6 fade-in">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs uppercase tracking-[0.2em] text-zinc-300">
+            Acceso seguro
+        </div>
+        <h1 class="text-4xl md:text-5xl font-semibold leading-tight">
+            Tu panel de asistencia
+            <span class="block text-red-400">con precision en tiempo real</span>
+        </h1>
+        <p class="text-zinc-400 max-w-xl">
+            Centraliza marcaciones, justificaciones y reportes en un flujo simple.
+            Diseñado para supervisores y equipos operativos.
+        </p>
+        <div class="flex items-center gap-4 text-sm text-zinc-400">
+            <div class="px-3 py-2 rounded-lg bg-white/5 border border-white/10">Seguimiento instantaneo</div>
+            <div class="px-3 py-2 rounded-lg bg-white/5 border border-white/10">Alertas inteligentes</div>
+        </div>
+    </div>
+
+    <div class="glass rounded-2xl p-8 md:p-10 fade-in">
+        <div class="mb-6">
+            <div class="text-sm text-zinc-400">Bienvenido de nuevo</div>
+            <div class="text-2xl font-semibold">Iniciar sesion</div>
+        </div>
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-zinc-300 mb-2">Usuario</label>
+                {{ form.username }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-zinc-300 mb-2">Contrasena</label>
+                {{ form.password }}
+            </div>
+            <button type="submit" class="w-full btn-neo py-3 rounded-xl">Ingresar</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

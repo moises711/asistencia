@@ -1,0 +1,79 @@
+✅ AJUSTE: RADIO GPS MODIFICADO A 20 METROS
+
+═══════════════════════════════════════════════════════════════════
+
+📍 CAMBIO REALIZADO:
+
+  Radio Permitido: 500m ➜ 20m
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 IMPLICACIONES:
+
+✓ MUY RESTRICTIVO
+  → Usuario DEBE estar dentro del edificio/piso
+  → No permite marcar desde otras plantas
+  → No permite marcar desde la calle
+
+✓ PRECISION GPS REQUERIDA
+  → Necesita precisión: 5-10 metros
+  → Requiere buena cobertura GPS
+  → Mejor con dispositivo móvil que tablet
+
+✓ VALIDACIÓN ESTRICTA
+  → Evita marcación remota desde lejos
+  → Asegura que esté realmente en oficina
+  → Ideal para control estricto
+
+═══════════════════════════════════════════════════════════════════
+
+📋 ESTADO ACTUAL:
+
+✓ Modelo actualizado: models.py (default=20)
+✓ Base de datos configurada: 20 metros
+✓ Documentación actualizada:
+  - GPS_README.md
+  - GPS_VISUAL_GUIDE.md
+  - GPS_QUICK_START.md
+  - asistencia/documentacion/gps-validacion.md
+
+═══════════════════════════════════════════════════════════════════
+
+💡 CAMBIAR EL RADIO EN EL FUTURO:
+
+Desde Django Shell:
+  python manage.py shell
+  >>> from asistencia.models import ConfiguracionGPS
+  >>> config = ConfiguracionGPS.obtener_configuracion_activa()
+  >>> config.radio_permitido_metros = 50  # Cambiar a 50m
+  >>> config.save()
+
+Desde Comando CLI:
+  python manage.py configurar_gps \
+    --latitud 10.5 --longitud -75.3 \
+    --radio 50 --nombre "Oficina Principal"
+
+═══════════════════════════════════════════════════════════════════
+
+🔍 VERIFICAR CONFIGURACIÓN:
+
+  python manage.py shell
+  >>> from asistencia.models import ConfiguracionGPS
+  >>> config = ConfiguracionGPS.obtener_configuracion_activa()
+  >>> print(f"Radio: {config.radio_permitido_metros}m")
+  Radio: 20m
+
+═══════════════════════════════════════════════════════════════════
+
+📊 COMPARACIÓN DE RADIOS:
+
+  10m:   Ultra restrictivo (mismo piso/sala)
+  20m:   Muy restrictivo (edificio principal) ← ACTUAL
+  50m:   Restrictivo (edificio + entrada)
+  100m:  Moderado (edificio completo)
+  200m:  Permisivo (área cercana)
+  500m:  Muy permisivo (cuadra completa)
+
+═══════════════════════════════════════════════════════════════════
+
+✨ El sistema está listo con el radio de 20m ajustado.

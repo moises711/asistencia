@@ -1,0 +1,24 @@
+{% extends "asistencia/base.html" %}
+
+{% block title %}Nueva Justificacion{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6 fade-in">
+    <div class="glass rounded-2xl p-6 md:p-8">
+        <div class="mb-6">
+            <h2 class="text-2xl font-semibold">Nueva justificacion</h2>
+            <p class="text-sm text-zinc-400 mt-1">Explica el motivo de tu tardanza o falta.</p>
+        </div>
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            <div class="space-y-4 text-sm">
+                {{ form.as_p }}
+            </div>
+            <div class="pt-4 flex gap-3">
+                <button type="submit" class="btn-neo py-3 px-6 rounded-xl flex-1">Enviar justificacion</button>
+                <a href="/dashboard/" class="btn-ghost py-3 px-6 rounded-xl text-center">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+🛠️ Plan de Desarrollo Paso a Paso (Roadmap en 6 Fases)
+Fase 1: Configuración Inicial y Modelo de Usuarios
+
+El corazón de Django es su modelo de usuarios. No puedes avanzar en la asistencia sin antes definir quién es quién.
+
+    Paso 1.1: Inicializar el proyecto Django y crear la app asistencia.
+
+    Paso 1.2: Configurar settings.py (Base de datos PostgreSQL/SQLite, Time Zone local, autenticación personalizada con AUTH_USER_MODEL).
+
+    Paso 1.3: Escribir el modelo CustomUser y el modelo Horario en models.py.
+
+    Paso 1.4: Ejecutar las primeras migraciones (makemigrations y migrate) y crear el primer superuser desde la terminal.
+
+Fase 2: El Núcleo del Modelo de Datos (Base de Datos Completa)
+
+Aquí creamos todas las tablas secundarias que interactúan entre sí.
+
+    Paso 2.1: Escribir en models.py los modelos restantes: IpOficinaAutorizada, RegistroAsistencia, Justificacion, AusenciaProgramada y DiaFeriado.
+
+    Paso 2.2: Configurar el archivo admin.py para registrar todos los modelos en el panel nativo de Django. Esto te permitirá meter datos de prueba manualmente (crear empleados, horarios e IPs de prueba) para testear después.
+
+Fase 3: Lógica del Backend (El Motor de Control)
+
+Antes de diseñar pantallas bonitas, debemos asegurarnos de que las reglas de negocio funcionen internamente.
+
+    Paso 3.1: Crear funciones utilitarias en un archivo utils.py (ej. la función para extraer la IP real del cliente y calcular la diferencia de horas netas).
+
+    Paso 3.2: Desarrollar las Vistas Basadas en Clases (CBVs) o funciones de API en views.py para procesar las acciones de: Marcar Entrada, Iniciar Almuerzo, Fin Almuerzo y Marcar Salida.
+
+    Paso 3.3: Añadir las validaciones críticas en el backend: comprobar si el usuario tiene permiso remoto o si está dentro de la IP autorizada del Wi-Fi.
+
+Fase 4: Interfaz de Usuario para el Empleado (Dashboard Mobile-First)
+
+El empleado necesita una pantalla ultra sencilla y rápida para no perder tiempo al marcar.
+
+    Paso 4.1: Crear la plantilla base (base.html) cargando Tailwind CSS y los bloques de diseño de cabecera/menú.
+
+    Paso 4.2: Diseñar la pantalla de /login/.
+
+    Paso 4.3: Diseñar el /dashboard/ del empleado: implementar un script de JavaScript para el reloj digital en tiempo real y hacer que los botones cambien de estado de forma reactiva (vía fetch/AJAX para evitar que la página se recargue por completo).
+
+    Paso 4.4: Crear el formulario visual para que los empleados soliciten justificaciones (/justificaciones/nueva/).
+
+Fase 5: Automatización y Tareas en Segundo Plano (Comandos Cron)
+
+Programar el sistema para que piense por sí mismo cuando nadie lo está usando.
+
+    Paso 5.1: Crear la estructura de comandos personalizados de Django (asistencia/management/commands/verificar_faltas.py).
+
+    Paso 5.2: Escribir la lógica del comando: iterar sobre los empleados laborables del día, verificar que no tengan vacaciones ni sea feriado, y generar la penalización de 'falta' si no han marcado entrada.
+
+    Paso 5.3: Configurar las señales (signals.py) de Django para disparar las notificaciones por correo electrónico al supervisor cuando ocurran tardanzas o justificaciones pendientes.
+
+Fase 6: Panel de Control, Reportes y Cierre Mensual (Supervisor & Admin)
+
+La fase final donde el administrador analiza los datos consolidados.
+
+    Paso 6.1: Diseñar la vista del /panel-control/ (Dashboard de RRHH) con métricas rápidas del día.
+
+    Paso 6.2: Crear la tabla de filtrado avanzada de asistencias con Django Forms.
+
+    Paso 6.3: Implementar el procesamiento de justificaciones (Aprobar/Rechazar en un clic).
+
+    Paso 6.4: Desarrollar la vista de Consolidado Mensual, programando las queries de agregación del ORM de Django para sumar horas y contar tardanzas de forma masiva y limpia

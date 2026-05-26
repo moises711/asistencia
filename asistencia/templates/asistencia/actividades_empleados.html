@@ -1,0 +1,147 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Actividades de Empleados{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-zinc-200 mb-1">Actividades Reportadas</h2>
+            <p class="text-sm text-zinc-400">Revisión completa de las actividades diarias de los empleados</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="glass rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-zinc-400 mb-1">Total Actividades</div>
+                    <div class="text-3xl font-bold text-zinc-200">{{ total_actividades }}</div>
+                </div>
+                <div class="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-zinc-400 mb-1">Empleados Reportaron</div>
+                    <div class="text-3xl font-bold text-emerald-400">{{ total_empleados_reportaron }}</div>
+                </div>
+                <div class="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.487M15 10a3 3 0 11-6 0 3 3 0 016 0zM6 20h12v-2a9 9 0 00-3-6.621M9 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-zinc-400 mb-1">Últimas 24h</div>
+                    <div class="text-3xl font-bold text-amber-400">
+                        {% if total_actividades > 0 %}
+                            Actualizadas
+                        {% else %}
+                            Sin datos
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass rounded-2xl p-6 space-y-4 overflow-visible relative z-30">
+        <div class="text-lg font-semibold mb-4 text-zinc-200">Filtros</div>
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 relative z-40 overflow-visible">
+            <div class="relative">
+                <label class="block text-sm text-zinc-300 mb-2">Empleado</label>
+                <select name="empleado" class="select-modern w-full">
+                    <option value="">Todos</option>
+                    {% for emp in empleados %}
+                    <option value="{{ emp.id }}" {% if request.GET.empleado|stringformat:'s' == emp.id|stringformat:'s' %}selected{% endif %}>{{ emp.get_full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-zinc-300 mb-2">Desde</label>
+                <input type="date" name="fecha_inicio" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-zinc-200" value="{{ request.GET.fecha_inicio }}">
+            </div>
+            <div>
+                <label class="block text-sm text-zinc-300 mb-2">Hasta</label>
+                <input type="date" name="fecha_fin" class="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-zinc-200" value="{{ request.GET.fecha_fin }}">
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="flex-1 btn-neo py-2.5 rounded-lg text-sm">Filtrar</button>
+                <a href="{% url 'actividades_empleados' %}" class="flex-1 btn-ghost py-2.5 rounded-lg text-sm text-center">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="glass rounded-2xl p-6 relative z-10">
+        <div class="text-lg font-semibold mb-4 text-zinc-200">Actividades Reportadas</div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-zinc-400 border-b border-white/10">
+                        <th class="py-3 px-4">Empleado</th>
+                        <th class="py-3 px-4">Fecha</th>
+                        <th class="py-3 px-4">Horario</th>
+                        <th class="py-3 px-4">Estado</th>
+                        <th class="py-3 px-4">Actividad Reportada</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr class="border-t border-white/5 hover:bg-white/5 transition-colors">
+                        <td class="py-3 px-4">
+                            <div class="font-semibold text-zinc-200">{{ registro.empleado.get_full_name }}</div>
+                            <div class="text-xs text-zinc-400">{{ registro.empleado.username }}</div>
+                        </td>
+                        <td class="py-3 px-4 text-zinc-300">{{ registro.fecha }}</td>
+                        <td class="py-3 px-4 text-xs text-zinc-400">
+                            {% if registro.hora_entrada %}
+                                <span class="text-emerald-400">{{ registro.hora_entrada|time:"H:i" }}</span>
+                            {% endif %}
+                            {% if registro.hora_salida %}
+                                <span class="text-rose-400">→ {{ registro.hora_salida|time:"H:i" }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if registro.estado == 'a_tiempo' %}
+                                <span class="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold">A tiempo</span>
+                            {% elif registro.estado == 'tardanza' %}
+                                <span class="inline-block px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold">Tardanza</span>
+                            {% else %}
+                                <span class="inline-block px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-semibold">Falta</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            <details class="cursor-pointer">
+                                <summary class="text-zinc-300 hover:text-zinc-100 transition-colors">
+                                    <span class="line-clamp-1">{{ registro.actividad_diaria|truncatewords:10 }}</span>
+                                </summary>
+                                <div class="mt-2 p-3 bg-black/30 rounded-lg text-zinc-200 text-xs border border-white/10">
+                                    {{ registro.actividad_diaria }}
+                                </div>
+                            </details>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-zinc-400">
+                            <svg class="w-12 h-12 mx-auto mb-2 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <p>No hay actividades reportadas con los filtros seleccionados.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

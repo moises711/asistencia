@@ -1,0 +1,430 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Gestión de Personal{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-zinc-200 mb-1">Gestión de Personal</h2>
+            <p class="text-sm text-zinc-400">Administre el registro de empleados, actualice cargos y supervise el estado activo de su fuerza laboral.</p>
+        </div>
+        <button onclick="abrirModalPersonal('crear')" class="bg-[#ff5733] hover:bg-[#e04e2e] text-white font-semibold px-5 py-3 rounded-2xl text-sm flex items-center gap-2 w-fit shadow-lg shadow-red-500/10 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+            </svg>
+            Añadir Personal
+        </button>
+    </div>
+
+    <div class="glass rounded-2xl p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-semibold text-zinc-300">Filtrar por Rol:</span>
+                <div class="flex bg-white/5 border border-white/10 rounded-lg p-1">
+                    <button class="px-4 py-1.5 text-sm font-semibold bg-white/10 text-zinc-200 rounded hover:bg-white/20 transition-colors">Todos</button>
+                    <button class="px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Empleados</button>
+                    <button class="px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Practicantes</button>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button class="flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    Filtros Avanzados
+                </button>
+                <div class="w-px h-4 bg-white/10"></div>
+                <button class="flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Exportar
+                </button>
+            </div>
+        </div>
+
+        <div class="text-base font-semibold text-zinc-200 mb-4">Activo</div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead>
+                    <tr class="text-zinc-400 font-semibold uppercase text-xs border-b border-white/10">
+                        <th class="px-4 pb-3">Personal</th>
+                        <th class="px-4 pb-3">ID</th>
+                        <th class="px-4 pb-3">Cargo</th>
+                        <th class="px-4 pb-3">Departamento</th>
+                        <th class="px-4 pb-3">Horario</th>
+                        <th class="px-4 pb-3">Estado</th>
+                        <th class="px-4 pb-3">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empleado in empleados %}
+                    <tr class="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
+                        <td class="px-4 py-4 flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold uppercase">
+                                {% if empleado.first_name %}
+                                    {{ empleado.first_name|first|upper }}
+                                {% else %}
+                                    {{ empleado.username|first|upper }}
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="font-bold text-zinc-200 capitalize">
+                                    {{ empleado.get_full_name|default:empleado.username }}
+                                </div>
+                                <div class="text-[11px] text-zinc-400">{{ empleado.dni }}</div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-zinc-300 font-medium">{{ empleado.id }}</td>
+                        <td class="px-4 py-4 text-zinc-300 font-medium">{{ empleado.get_rol_display }}</td>
+                        <td class="px-4 py-4 text-zinc-300 font-medium">
+                            {% if empleado.area %}{{ empleado.area.nombre }}{% else %}<span class="text-zinc-500 italic">Sin área</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-zinc-300 font-medium">
+                            {% if empleado.horario %}{{ empleado.horario.nombre }}{% else %}<span class="text-zinc-500 italic">Sin horario</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-4">
+                            {% if empleado.estado_hoy == "Presente" or empleado.estado_hoy == "Activo" %}
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> {{ empleado.estado_hoy }}
+                                </span>
+                            {% elif empleado.estado_hoy == "Tardanza" %}
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 text-xs font-medium border border-amber-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> {{ empleado.estado_hoy }}
+                                </span>
+                            {% elif empleado.estado_hoy == "Falta" %}
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-300 text-xs font-medium border border-rose-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> {{ empleado.estado_hoy }}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 text-zinc-400 text-xs font-medium border border-zinc-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span> {{ empleado.estado_hoy }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4">
+                            <button onclick="abrirModalPersonal('editar', {{ empleado.id }}, '{{ empleado.first_name|escapejs }}', '{{ empleado.last_name|escapejs }}', '{{ empleado.username|escapejs }}', '{{ empleado.email|escapejs }}', '{% if empleado.area %}{{ empleado.area.id }}{% else %}{% endif %}', '{% if empleado.horario %}{{ empleado.horario.id }}{% else %}{% endif %}', '{{ empleado.rol|escapejs }}', '{{ empleado.dni|escapejs }}', {% if empleado.permite_remoto %}true{% else %}false{% endif %})" 
+                                   class="text-indigo-400 hover:text-indigo-300 transition font-medium text-sm">
+                                  Editar
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="border-t border-white/5">
+                        <td colspan="6" class="px-4 py-8 text-center text-zinc-400">
+                            <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p>No hay empleados registrados aún.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="usuario-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div id="usuario-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="hideUsuarioModal()"></div>
+    <div class="relative w-full max-w-3xl glass rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl">
+        
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <div id="modal-titulo" class="text-xl font-bold text-zinc-200">Añadir Personal</div>
+                <div id="modal-subtitulo" class="text-sm text-zinc-400">Completa los datos del nuevo empleado.</div>
+            </div>
+            <button onclick="hideUsuarioModal()" type="button" class="text-zinc-400 hover:text-zinc-200 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form id="form-personal" method="post" class="mt-6 space-y-4" novalidate onsubmit="enviarFormularioPersonal(event);">
+            {% csrf_token %}
+            <input type="hidden" id="edit-empleado-id" name="empleado_id">
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Nombres</label>
+                    {{ empleado_form.first_name }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Apellidos</label>
+                    {{ empleado_form.last_name }}
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                 <div>
+                   <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Usuario (login)</label>
+                   {{ empleado_form.username }}
+                </div>
+                 <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Correo</label>
+                     {{ empleado_form.email }}
+                 </div>
+                 <div class="grid md:grid-cols-1 gap-4">
+                 <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">DNI / Documento de Identidad</label>
+                     {{ empleado_form.dni }}
+                 </div>
+                 </div>
+            </div>
+           
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Área / Departamento</label>
+                    {{ empleado_form.area }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Horario asignado</label>
+                    {{ empleado_form.horario }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Rol / Cargo</label>
+                    <select id="id_rol_custom" name="rol" class="select-corregido-modal">
+                        <option value="empleado">Empleado</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 py-1">
+                {{ empleado_form.permite_remoto }}
+                <span class="text-sm font-semibold text-zinc-300">Permitir marcado remoto</span>
+            </div>
+
+            <div id="seccion-passwords" class="grid md:grid-cols-2 gap-4 transition-all">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Contraseña</label>
+                    {{ empleado_form.password1 }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Confirmar contraseña</label>
+                    {{ empleado_form.password2 }}
+                </div>
+            </div>
+
+            <div id="modal-status-feedback" class="text-center text-xs py-2 hidden"></div>
+
+            <button id="btn-submit-modal" type="submit" class="w-full btn-neo py-3 rounded-xl mt-4 font-bold text-sm transition-all tracking-wide text-white">
+                Crear empleado
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    #usuario-modal form input[type="text"],
+    #usuario-modal form input[type="email"],
+    #usuario-modal form input[type="password"],
+    #usuario-modal form select {
+        width: 100% !important;
+        background: #18181b !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #e4e4e7 !important;
+        border-radius: 0.75rem !important;
+        padding: 0.625rem 1rem !important;
+        font-size: 0.875rem !important;
+        outline: none !important;
+        transition: border 0.2s ease;
+    }
+    #usuario-modal form input:focus, #usuario-modal form select:focus {
+        border-color: #4f46e5 !important;
+    }
+
+    .select-corregido-modal {
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 0.75rem center !important;
+        background-size: 1rem !important;
+    }
+    .select-corregido-modal option {
+        background-color: #09090b !important;
+        color: #f4f4f5 !important;
+    }
+</style>
+
+<script>
+    function setValorCampo(form, nombre, valor) {
+        const campo = form.querySelector(`[name="${nombre}"]`);
+        if (campo) {
+            campo.value = valor ?? '';
+        }
+    }
+
+    function configurarCamposPassword(modoEdicion) {
+        const form = document.getElementById('form-personal');
+        ['password1', 'password2'].forEach((nombre) => {
+            const campo = form.querySelector(`[name="${nombre}"]`);
+            if (!campo) return;
+            if (modoEdicion) {
+                campo.required = false;
+                campo.disabled = true;
+                campo.value = '';
+            } else {
+                campo.required = true;
+                campo.disabled = false;
+            }
+        });
+    }
+
+    function obtenerCsrfToken() {
+        const input = document.querySelector('#form-personal [name=csrfmiddlewaretoken]');
+        if (input?.value) return input.value;
+        const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    async function leerRespuestaJson(res) {
+        const texto = await res.text();
+        try {
+            return JSON.parse(texto);
+        } catch {
+            return { success: false, message: `Error del servidor (${res.status})` };
+        }
+    }
+
+    function abrirModalPersonal(accion, id="", first_name="", last_name="", username="", email="", area_id="", horario_id="", rol="", dni="", permite_remoto=false) {
+        const modal = document.getElementById('usuario-modal');
+        const titulo = document.getElementById('modal-titulo');
+        const subtitulo = document.getElementById('modal-subtitulo');
+        const form = document.getElementById('form-personal');
+        const seccionPasswords = document.getElementById('seccion-passwords');
+        const inputId = document.getElementById('edit-empleado-id');
+        const rolSelect = document.getElementById('id_rol_custom');
+        const btnSubmit = document.getElementById('btn-submit-modal');
+        const feedback = document.getElementById('modal-status-feedback');
+
+        feedback.classList.add('hidden');
+        feedback.textContent = '';
+
+        if (accion === 'crear') {
+            titulo.textContent = "Añadir Personal";
+            subtitulo.textContent = "Completa los datos del nuevo empleado.";
+            form.reset();
+            seccionPasswords.style.display = 'grid';
+            inputId.value = "";
+            rolSelect.value = "empleado";
+            btnSubmit.textContent = "Crear empleado";
+            form.dataset.modo = 'crear';
+            configurarCamposPassword(false);
+        } else if (accion === 'editar') {
+            titulo.textContent = "Editar Personal";
+            subtitulo.textContent = "Actualiza la información del empleado.";
+            inputId.value = id;
+            setValorCampo(form, 'first_name', first_name);
+            setValorCampo(form, 'last_name', last_name);
+            setValorCampo(form, 'username', username);
+            setValorCampo(form, 'email', email);
+            setValorCampo(form, 'dni', dni);
+            setValorCampo(form, 'area', area_id);
+            setValorCampo(form, 'horario', horario_id);
+            rolSelect.value = rol || 'empleado';
+            const remoto = form.querySelector('[name="permite_remoto"]');
+            if (remoto) {
+                remoto.checked = permite_remoto === true || permite_remoto === 'true';
+            }
+            seccionPasswords.style.display = 'none';
+            btnSubmit.textContent = "Guardar cambios";
+            form.dataset.modo = 'editar';
+            configurarCamposPassword(true);
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function hideUsuarioModal() {
+        const modal = document.getElementById('usuario-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    async function enviarFormularioPersonal(event) {
+        event.preventDefault();
+        const form = document.getElementById('form-personal');
+        const feedback = document.getElementById('modal-status-feedback');
+        const btnSubmit = document.getElementById('btn-submit-modal');
+
+        if (form.dataset.modo === 'crear') {
+            feedback.classList.remove('hidden');
+            feedback.className = 'text-center text-xs py-2 text-amber-300';
+            feedback.textContent = 'Para crear personal usa la pantalla Empleados (admin).';
+            return;
+        }
+
+        const empleadoId = document.getElementById('edit-empleado-id').value;
+        if (!empleadoId) {
+            return;
+        }
+
+        const email = form.querySelector('[name="email"]')?.value?.trim();
+        if (!email) {
+            feedback.classList.remove('hidden');
+            feedback.className = 'text-center text-xs py-2 text-rose-300';
+            feedback.textContent = 'El correo es obligatorio';
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        feedback.classList.remove('hidden');
+        feedback.className = 'text-center text-xs py-2 text-amber-300 animate-pulse';
+        feedback.textContent = 'Guardando cambios...';
+
+        const csrf = obtenerCsrfToken();
+        if (!csrf) {
+            feedback.className = 'text-center text-xs py-2 text-rose-300';
+            feedback.textContent = 'Sesión inválida. Vuelve a iniciar sesión.';
+            if (window.showToast) window.showToast('Sesión inválida', 'error');
+            btnSubmit.disabled = false;
+            return;
+        }
+
+        const areaVal = form.querySelector('[name="area"]')?.value;
+        const horarioVal = form.querySelector('[name="horario"]')?.value;
+        try {
+            const res = await fetch(`/api/empleado/${empleadoId}/actualizar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    first_name: form.querySelector('[name="first_name"]')?.value?.trim(),
+                    last_name: form.querySelector('[name="last_name"]')?.value?.trim(),
+                    username: form.querySelector('[name="username"]')?.value?.trim(),
+                    email: email,
+                    dni: form.querySelector('[name="dni"]')?.value?.trim(),
+                    area: areaVal ? parseInt(areaVal, 10) : null,
+                    horario: horarioVal ? parseInt(horarioVal, 10) : null,
+                    rol: document.getElementById('id_rol_custom').value,
+                    permite_remoto: form.querySelector('[name="permite_remoto"]')?.checked || false,
+                }),
+            });
+            const data = await leerRespuestaJson(res);
+            if (res.ok && data.success) {
+                feedback.className = 'text-center text-xs py-2 text-emerald-300';
+                feedback.textContent = data.message || 'Cambios guardados';
+                if (window.showToast) window.showToast(data.message || 'Cambios guardados', 'success');
+                setTimeout(() => {
+                    hideUsuarioModal();
+                    location.reload();
+                }, 1200);
+            } else {
+                const msg = data.message || 'No se pudo guardar';
+                feedback.className = 'text-center text-xs py-2 text-rose-300';
+                feedback.textContent = msg;
+                if (window.showToast) window.showToast(msg, 'error');
+            }
+        } catch (e) {
+            feedback.className = 'text-center text-xs py-2 text-rose-300';
+            feedback.textContent = 'Error de conexión';
+            if (window.showToast) window.showToast('Error de conexión', 'error');
+        } finally {
+            btnSubmit.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

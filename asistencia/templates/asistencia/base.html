@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Control de Asistencia{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #050505;
+            --bg-2: #0d0d0d;
+            --panel: rgba(20, 20, 20, 0.78);
+            --panel-border: rgba(255, 255, 255, 0.06);
+            --glow: rgba(255, 35, 35, 0.45);
+            --accent: #ff3b3b;
+            --accent-2: #ff6b3d;
+            --text: #f5f5f5;
+            --muted: #a1a1aa;
+            --text_main: #f5f5f5;
+            --text_muted: #a1a1aa;
+            --primary: #3b82f6;
+            --primary_light: #eff6ff;
+            --accent_green: #10b981;
+            --accent_yellow: #f59e0b;
+            --accent_red: #ef4444;
+            --bg_light: #f3f4f6;
+        }
+
+        body {
+            font-family: "Space Grotesk", "Sora", sans-serif;
+            color: var(--text);
+            background: radial-gradient(1200px 600px at 15% 20%, rgba(255, 59, 59, 0.15), transparent 55%),
+                radial-gradient(1000px 500px at 80% 10%, rgba(255, 107, 61, 0.12), transparent 60%),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+            min-height: 100vh;
+        }
+
+        .page-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: radial-gradient(circle at 30% 20%, black 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glass {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 40px rgba(255, 59, 59, 0.1);
+            backdrop-filter: blur(18px);
+        }
+
+        .neon {
+            box-shadow: 0 0 25px rgba(255, 59, 59, 0.45), inset 0 0 18px rgba(255, 59, 59, 0.25);
+        }
+
+        .btn-neo {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px rgba(255, 59, 59, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+
+        .btn-neo:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 16px 40px rgba(255, 59, 59, 0.5);
+            filter: saturate(1.1);
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            transition: border 0.2s ease, background 0.2s ease;
+        }
+
+        .btn-ghost:hover {
+            border-color: rgba(255, 59, 59, 0.5);
+            background: rgba(255, 59, 59, 0.12);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            filter: brightness(1.1);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #e5e7eb;
+            color: var(--text_main);
+            transition: all 0.2s ease;
+        }
+
+        .btn-outline:hover {
+            background: var(--primary_light);
+            border-color: var(--primary);
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card input[type="text"],
+        .card input[type="password"],
+        .card input[type="email"],
+        .card input[type="date"],
+        .card select {
+            width: 100%;
+            background: white;
+            border: 1px solid #e5e7eb;
+            color: var(--text_main);
+            border-radius: 8px;
+            padding: 10px 12px;
+            outline: none;
+            transition: border 0.2s ease;
+        }
+
+        .card input:focus,
+        .card select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-presente {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-tardanza {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-falta {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.8s ease both;
+        }
+
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        form input[type="text"],
+        form input[type="password"],
+        form input[type="email"],
+        form select,
+        form textarea {
+            width: 100%;
+            background: rgba(8, 8, 8, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 12px 14px;
+            outline: none;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        form input:focus,
+        form select:focus,
+        form textarea:focus {
+            border-color: rgba(255, 59, 59, 0.6);
+            box-shadow: 0 0 0 3px rgba(255, 59, 59, 0.2);
+        }
+
+        /* Modern Select Styles - Red/Orange Theme */
+        select.select-modern {
+            width: 100%;
+            background: rgba(20, 20, 20, 0.6);
+            border: 2px solid rgba(255, 59, 59, 0.4);
+            color: var(--text);
+            border-radius: 14px;
+            padding: 11px 14px 11px 14px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ff3b3b' d='M1 4l5 4 5-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 38px;
+        }
+
+        select.select-modern:hover {
+            border-color: rgba(255, 59, 59, 0.7);
+            background-color: rgba(25, 25, 25, 0.9);
+            box-shadow: 0 0 25px rgba(255, 59, 59, 0.25), inset 0 0 0 1px rgba(255, 59, 59, 0.15);
+        }
+
+        select.select-modern:focus {
+            border-color: rgba(255, 59, 59, 0.8);
+            box-shadow: 0 0 0 4px rgba(255, 59, 59, 0.25), inset 0 0 0 2px rgba(255, 59, 59, 0.15);
+        }
+
+        /* Dropdown styling */
+        select.select-modern option {
+            background: rgba(15, 15, 15, 0.95);
+            color: var(--text);
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 59, 59, 0.3);
+        }
+
+        select.select-modern option:checked {
+            background: linear-gradient(135deg, rgba(255, 59, 59, 0.6), rgba(255, 107, 61, 0.6));
+            background-color: rgba(255, 59, 59, 0.6);
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        select.select-modern option:hover {
+            background: rgba(255, 59, 59, 0.4);
+            color: var(--text);
+        }
+
+        /* Custom Select Dropdown */
+        .custom-select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .custom-select {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .custom-select select {
+            display: none;
+        }
+
+        .select-styled {
+            position: relative;
+            width: 100%;
+            background: rgba(20, 20, 20, 0.6);
+            border: 2px solid rgba(255, 59, 59, 0.4);
+            color: var(--text);
+            border-radius: 14px;
+            padding: 11px 14px 11px 14px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            appearance: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .select-styled::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ff3b3b' d='M1 4l5 4 5-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            pointer-events: none;
+        }
+
+        .select-styled:hover {
+            border-color: rgba(255, 59, 59, 0.7);
+            background-color: rgba(25, 25, 25, 0.9);
+            box-shadow: 0 0 25px rgba(255, 59, 59, 0.25), inset 0 0 0 1px rgba(255, 59, 59, 0.15);
+        }
+
+        .select-styled.active {
+            border-color: rgba(255, 59, 59, 0.8);
+            box-shadow: 0 0 0 4px rgba(255, 59, 59, 0.25), inset 0 0 0 2px rgba(255, 59, 59, 0.15);
+        }
+        /* Dropdown container */
+.select-options {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+
+    background: rgba(12, 12, 12, 0.98);
+    backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255, 59, 59, 0.35);
+    border-radius: 16px;
+
+    max-height: 260px;
+    overflow-y: auto;
+
+    z-index: 9999;
+
+    display: none;
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,0.65),
+        0 0 30px rgba(255,59,59,0.12);
+
+    padding: 8px;
+    animation: dropdownFade 0.18s ease;
+}
+
+/* Open state */
+.select-options.active {
+    display: block;
+}
+
+/* Smooth animation */
+@keyframes dropdownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Option item */
+.select-option {
+    padding: 14px 16px;
+
+    border-radius: 12px;
+
+    color: #f5f5f5;
+
+    font-size: 0.95rem;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.15s ease,
+        border 0.2s ease;
+
+    border: 1px solid transparent;
+
+    margin-bottom: 4px;
+}
+
+/* Hover */
+.select-option:hover {
+    background: rgba(255, 59, 59, 0.16);
+    border-color: rgba(255, 59, 59, 0.4);
+
+    transform: translateX(4px);
+}
+
+/* Selected */
+.select-option.selected {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,59,59,0.85),
+            rgba(255,107,61,0.85)
+        );
+
+    color: white;
+
+    border-color: rgba(255,255,255,0.15);
+
+    box-shadow:
+        0 0 18px rgba(255,59,59,0.3);
+}
+
+/* Scrollbar */
+.select-options::-webkit-scrollbar {
+    width: 8px;
+}
+
+.select-options::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.select-options::-webkit-scrollbar-thumb {
+    background: rgba(255, 59, 59, 0.45);
+    border-radius: 999px;
+}
+
+.select-options::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 59, 59, 0.7);
+}
+.glass {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    box-shadow:
+        0 30px 80px rgba(0,0,0,.55),
+        0 0 40px rgba(255,59,59,.1);
+
+    backdrop-filter: blur(18px);
+
+    overflow: visible !important;
+    position: relative;
+    z-index: 1;
+}
+.custom-select {
+    position: relative;
+    z-index: 5000;
+}
+
+.select-options {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+
+    min-width: 100%;
+    width: max-content;
+
+    z-index: 99999;
+}
+
+        
+        
+    </style>
+</head>
+
+<body>
+    <div class="page-bg" aria-hidden="true"></div>
+    <header class="relative z-10 border-b border-white/5">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="h-9 w-9 rounded-full bg-gradient-to-br from-red-500 to-orange-500 neon"></div>
+                <div>
+                    <div class="text-lg font-semibold tracking-tight">Control de Asistencia</div>
+                    <div class="text-xs text-zinc-400">AI Operations Suite</div>
+                </div>
+            </div>
+            <div class="text-sm">
+                {% if user.is_authenticated %}
+                <span class="mr-3 text-zinc-300">{{ user.username }}</span>
+                <form method="post" action="/logout/" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-ghost px-4 py-2 rounded-full">Cerrar sesion</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    <main class="relative z-10 max-w-6xl mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <script>
+        window.showToast = function (message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            // Colors based on type
+            const bgClass = type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20';
+            const textClass = type === 'success' ? 'text-emerald-300' : 'text-rose-300';
+            const icon = type === 'success'
+                ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+                : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+
+            toast.className = `glass flex items-center gap-3 px-4 py-3 rounded-xl border ${bgClass} ${textClass} fade-in pointer-events-auto shadow-lg transform transition-all duration-300`;
+            toast.innerHTML = `
+                <div>${icon}</div>
+                <div class="text-sm font-medium">${message}</div>
+            `;
+
+            container.appendChild(toast);
+
+            // Remove after 4 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px) scale(0.95)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        };
+
+        // Custom Select Initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCustomSelects();
+        });
+
+        function initializeCustomSelects() {
+            const selects = document.querySelectorAll('select.select-modern');
+            selects.forEach(select => {
+                // Create wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'custom-select';
+                wrapper.style.position = 'relative';
+                wrapper.style.width = '100%';
+                select.parentNode.insertBefore(wrapper, select);
+                wrapper.appendChild(select);
+
+                // Create styled button
+                const styled = document.createElement('div');
+                styled.className = 'select-styled';
+                styled.textContent = select.options[select.selectedIndex].text;
+                wrapper.insertBefore(styled, select);
+
+                // Create options container
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = 'select-options';
+                wrapper.appendChild(optionsContainer);
+
+                // Populate options
+                Array.from(select.options).forEach((option, index) => {
+                    const optDiv = document.createElement('div');
+                    optDiv.className = 'select-option';
+                    optDiv.textContent = option.text;
+                    if (option.selected) optDiv.classList.add('selected');
+                    
+                    optDiv.addEventListener('click', function() {
+                        select.selectedIndex = index;
+                        styled.textContent = option.text;
+                        
+                        // Update selected class
+                        document.querySelectorAll(`[data-select-id="${wrapper.id}"] .select-option`).forEach(el => {
+                            el.classList.remove('selected');
+                        });
+                        optDiv.classList.add('selected');
+                        
+                        // Close dropdown
+                        optionsContainer.classList.remove('active');
+                        styled.classList.remove('active');
+                        
+                        // Trigger change event
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    optionsContainer.appendChild(optDiv);
+                });
+
+                wrapper.id = `select-${Math.random().toString(36).substr(2, 9)}`;
+                Array.from(optionsContainer.querySelectorAll('.select-option')).forEach(el => {
+                    el.setAttribute('data-select-id', wrapper.id);
+                });
+
+                // Toggle dropdown
+                styled.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    optionsContainer.classList.toggle('active');
+                    styled.classList.toggle('active');
+                });
+
+                // Close when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!wrapper.contains(e.target)) {
+                        optionsContainer.classList.remove('active');
+                        styled.classList.remove('active');
+                    }
+                });
+
+                // Hide original select
+                select.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+
+</html>

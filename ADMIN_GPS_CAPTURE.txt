@@ -1,0 +1,186 @@
+✅ NUEVA FUNCIONALIDAD: CAPTURAR GPS DESDE EL ADMIN
+
+═══════════════════════════════════════════════════════════════════
+
+📍 CAMBIOS REALIZADOS:
+
+1. ✏️  Panel Admin Mejorado (admin.py)
+   ├─ Nueva clase: ConfiguracionGPSAdmin
+   ├─ Botón: "📍 Capturar Ubicación Actual" 
+   ├─ Muestra: Vista en Google Maps
+   └─ Automático: Auto-rellena campos GPS
+
+2. 🎯 Nuevas Vistas (views.py)
+   ├─ capturar_gps_admin() - Página de captura
+   └─ guardar_gps_admin() - Endpoint para guardar coords
+
+3. 🛣️  Nuevas Rutas (urls.py)
+   ├─ /admin/capturar-gps/ - Página de captura
+   └─ /admin/guardar-gps/ - API de guardado
+
+4. 🎨 Nuevo Template (capturar_gps_admin.html)
+   ├─ Interfaz amigable para capturar GPS
+   ├─ Visualización de ubicación actual
+   └─ Instrucciones paso a paso
+
+═══════════════════════════════════════════════════════════════════
+
+🚀 CÓMO USAR:
+
+OPCIÓN 1: Desde el Admin (Panel)
+─────────────────────────────────
+1. Acceder a: http://localhost:8000/admin/asistencia/configuraciongps/
+2. Hacer click en "Editar" (o crear una nueva)
+3. Scroll al campo "Herramientas"
+4. Click en botón "📍 Capturar Ubicación Actual"
+5. Permitir GPS en el navegador
+6. Los campos se llenan automáticamente
+7. Click en "Guardar" (botón estándar de admin)
+
+OPCIÓN 2: Página Dedicada de Captura
+─────────────────────────────────────
+1. Acceder a: http://localhost:8000/admin/capturar-gps/
+2. Click en "📍 Capturar Mi Ubicación Actual"
+3. Permitir GPS en el navegador
+4. Ajustar parámetros si es necesario:
+   - Radio permitido (20m por defecto)
+   - Nombre de la oficina
+5. Click en "💾 Guardar Ubicación"
+6. ¡Listo! Ubicación guardada
+
+═══════════════════════════════════════════════════════════════════
+
+📊 FUNCIONALIDADES:
+
+✓ Captura automática de coordenadas GPS
+✓ Precisión GPS mostrada (margen de error)
+✓ Radio permitido configurable (en metros)
+✓ Nombre de oficina personalizable
+✓ Validación automática de datos
+✓ Enlace a Google Maps para verificar
+✓ Desactivación automática de configuraciones previas
+✓ Interfaz intuitiva con estados visuales
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 FLUJO VISUAL:
+
+Admin abre:
+  http://localhost:8000/admin/capturar-gps/
+        ↓
+Ve interfaz con botón de captura
+        ↓
+Click en "📍 Capturar Mi Ubicación Actual"
+        ↓
+Navegador solicita permiso GPS
+        ↓
+Admin acepta permiso
+        ↓
+Se obtienen coordenadas automáticamente:
+  ├─ Latitud: 10.5123456
+  ├─ Longitud: -75.3456789
+  └─ Precisión: 5.5m
+        ↓
+Admin puede ajustar:
+  ├─ Radio permitido (20m)
+  ├─ Nombre de oficina
+  └─ Coordinadas manualmente si lo desea
+        ↓
+Click en "💾 Guardar Ubicación"
+        ↓
+Endpoint POST /admin/guardar-gps/
+        ↓
+Se guarda en BD automáticamente
+        ↓
+✅ "Ubicación guardada correctamente"
+        ↓
+Dashboard se actualiza automáticamente
+
+═══════════════════════════════════════════════════════════════════
+
+🔗 ENDPOINTS:
+
+GET /admin/capturar-gps/
+└─ Página HTML para capturar GPS
+   Requiere: Autenticado como admin/staff
+   Retorna: HTML con interfaz de captura
+
+POST /admin/guardar-gps/
+└─ API para guardar las coordenadas
+   Requiere: JSON + CSRF token
+   Requiere: Admin/staff autenticado
+   
+   Body JSON:
+   {
+     "latitud": 10.5123456,
+     "longitud": -75.3456789,
+     "radio": 20,
+     "nombre": "Oficina Principal"
+   }
+   
+   Response:
+   {
+     "success": true,
+     "message": "✅ Ubicación guardada exitosamente",
+     "config": {
+       "nombre": "Oficina Principal",
+       "latitud": 10.5123456,
+       "longitud": -75.3456789,
+       "radio": 20
+     }
+   }
+
+═══════════════════════════════════════════════════════════════════
+
+🛡️ SEGURIDAD:
+
+✓ Requiere estar autenticado (login_required)
+✓ Solo admin/staff pueden capturar (is_staff check)
+✓ CSRF token requerido en POST
+✓ Validación servidor-side de coordenadas
+✓ Manejo de errores GPS
+✓ Precisión GPS registrada para auditoría
+
+═══════════════════════════════════════════════════════════════════
+
+📱 COMPATIBILIDAD:
+
+✓ Navegadores modernos (Chrome, Firefox, Safari, Edge)
+✓ Dispositivos móviles (con GPS)
+✓ Tablets
+✓ Desktops con GPS
+✓ HTTPS recomendado para producción
+✓ Localhost HTTP funciona para desarrollo
+
+═══════════════════════════════════════════════════════════════════
+
+⚡ VENTAJAS:
+
+✓ No necesita calcular manualmente las coordenadas
+✓ Captura precisa desde la ubicación real
+✓ Interfaz amigable y clara
+✓ Validación automática de datos
+✓ Google Maps integrado para verificar
+✓ Cambios inmediatos sin recargar servidor
+✓ Compatible con toda la cadena de validación GPS
+
+═══════════════════════════════════════════════════════════════════
+
+🧪 PRUEBAS:
+
+1. Verificar admin:
+   python manage.py shell
+   >>> from asistencia.models import ConfiguracionGPS
+   >>> ConfiguracionGPS.obtener_configuracion_activa()
+
+2. Acceder a la página:
+   http://localhost:8000/admin/capturar-gps/
+
+3. Capturar ubicación y guardar
+
+4. Verificar en BD:
+   SELECT * FROM asistencia_configuraciongps WHERE activa = true;
+
+═══════════════════════════════════════════════════════════════════
+
+✨ ¡Sistema listo para usar desde el Admin!

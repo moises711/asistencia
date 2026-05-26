@@ -1,0 +1,385 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Empleados{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <div class="glass rounded-2xl p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <div class="text-lg font-semibold">Gestion de empleados</div>
+                <div class="text-sm text-zinc-400">Crea credenciales y asigna horario y supervisor.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-6">
+        <div class="glass rounded-2xl p-6">
+            <div class="text-lg font-semibold mb-4">Nuevo empleado</div>
+            {% if form.errors %}
+                <div class="mb-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                    Revisa los campos marcados. Hay errores en el formulario.
+                </div>
+            {% endif %}
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm text-zinc-300 mb-2">Usuario</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <div class="mt-1 text-xs text-rose-300">{{ form.username.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Nombres</label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.first_name.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Apellidos</label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.last_name.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-300 mb-2">Correo</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="mt-1 text-xs text-rose-300">{{ form.email.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-300 mb-2">DNI/CE</label>
+                    {{ form.dni }}
+                    {% if form.dni.errors %}
+                        <div class="mt-1 text-xs text-rose-300">{{ form.dni.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Área</label>
+                        {{ form.area }}
+                        {% if form.area.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.area.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Horario</label>
+                        {{ form.horario }}
+                        {% if form.horario.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.horario.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Supervisor</label>
+                        {{ form.supervisor }}
+                        {% if form.supervisor.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.supervisor.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Rol</label>
+                        {{ form.rol }}
+                        {% if form.rol.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.rol.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    {{ form.permite_remoto }}
+                    <span class="text-sm text-zinc-300">Permitir marcado remoto</span>
+                    {% if form.permite_remoto.errors %}
+                        <div class="mt-1 text-xs text-rose-300">{{ form.permite_remoto.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Contrasena</label>
+                        {{ form.password1 }}
+                        {% if form.password1.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.password1.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Confirmar contrasena</label>
+                        {{ form.password2 }}
+                        {% if form.password2.errors %}
+                            <div class="mt-1 text-xs text-rose-300">{{ form.password2.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <button type="submit" class="w-full btn-neo py-3 rounded-xl">Crear empleado</button>
+            </form>
+        </div>
+
+        <div class="glass rounded-2xl p-6">
+            <div class="text-lg font-semibold mb-4">Empleados activos</div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-zinc-400 border-b border-white/10">
+                            <th class="py-3 px-4">Personal</th>
+                            <th class="py-3 px-4">ID</th>
+                            <th class="py-3 px-4">Cargo</th>
+                            <th class="py-3 px-4">Departamento</th>
+                            <th class="py-3 px-4">Estado</th>
+                            <th class="py-3 px-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for empleado in empleados %}
+                            <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                                <td class="py-3 px-4 text-zinc-200 font-medium">{{ empleado.get_full_name|default:empleado.username }}</td>
+                                <td class="py-3 px-4 text-zinc-400 font-mono text-xs">{{ empleado.dni }}</td>
+                                <td class="py-3 px-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        {% if empleado.rol == 'admin' %}
+                                            bg-purple-500/20 text-purple-300
+                                        {% elif empleado.rol == 'supervisor' %}
+                                            bg-blue-500/20 text-blue-300
+                                        {% else %}
+                                            bg-cyan-500/20 text-cyan-300
+                                        {% endif %}">
+                                        {{ empleado.get_rol_display }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    {% if empleado.area %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300">
+                                            {{ empleado.area.nombre }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-zinc-500 italic">Sin área</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300">
+                                        ✓ Activo
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button onclick="abrirModalEditarEmpleado({{ empleado.id }}, '{{ empleado.get_full_name }}', '{{ empleado.username }}', '{{ empleado.email }}', '{{ empleado.dni }}', {{ empleado.area.id|default:'null' }}, '{{ empleado.get_rol_display }}')" 
+                                            class="text-indigo-400 hover:text-indigo-300 transition text-sm font-medium">
+                                        Editar
+                                    </button>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="py-8 px-4 text-center text-zinc-400">
+                                    <svg class="w-8 h-8 mx-auto mb-2 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-2a6 6 0 0112 0v2zm0 0h6v-2a6 6 0 00-9-5.582V9a6 6 0 016 6v2z"></path>
+                                    </svg>
+                                    No hay empleados registrados.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL para Editar Empleado -->
+    <div id="modalEditarEmpleado" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target === this) cerrarModalEditarEmpleado()">
+        <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl border border-zinc-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-4 rounded-t-2xl sticky top-0 z-10">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <span>✏️</span>
+                        <span>Editar Empleado</span>
+                    </h2>
+                    <button onclick="cerrarModalEditarEmpleado()" class="text-white/70 hover:text-white text-2xl transition">×</button>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6">
+                <form id="formEditarEmpleado" method="post" action="" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" id="empleado-id" name="empleado_id">
+                    
+                    <!-- Nombre Completo (Read-only) -->
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Nombre Completo</label>
+                        <div id="modal-nombre" class="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300"></div>
+                    </div>
+
+                    <!-- DNI (Read-only) -->
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">DNI/CE</label>
+                        <div id="modal-dni" class="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300"></div>
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Correo Electrónico</label>
+                        <input type="email" id="modal-email" 
+                               class="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition"
+                               placeholder="correo@ejemplo.com">
+                    </div>
+
+                    <!-- Área -->
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Departamento / Área</label>
+                        <select id="modal-area" class="select-modern">
+                            <option value="">-- Sin área --</option>
+                            {% for area in areas %}
+                                <option value="{{ area.id }}">{{ area.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Rol -->
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-2">Rol / Cargo</label>
+                        <select id="modal-rol" class="select-modern">
+                            <option value="empleado">Empleado</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+
+                    <!-- Status -->
+                    <div id="modal-status" class="text-center text-sm">
+                        <p class="text-zinc-400">Modifica los campos necesarios</p>
+                    </div>
+
+                    <!-- Botones de acción -->
+                    <div class="flex gap-2 pt-4 border-t border-zinc-700">
+                        <button type="button" onclick="guardarCambiosEmpleado()" 
+                                class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                            💾 Guardar Cambios
+                        </button>
+                        <button type="button" onclick="cerrarModalEditarEmpleado()" 
+                                class="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Abrir modal editar
+function abrirModalEditarEmpleado(id, nombre, username, email, dni, areaId, rol) {
+    const idInput = document.getElementById('empleado-id');
+    const nombreDiv = document.getElementById('modal-nombre');
+    const dniDiv = document.getElementById('modal-dni');
+    const emailInput = document.getElementById('modal-email');
+    const areaSelect = document.getElementById('modal-area');
+    const rolSelect = document.getElementById('modal-rol');
+    const statusDiv = document.getElementById('modal-status');
+
+    if (!idInput || !nombreDiv || !dniDiv || !emailInput || !areaSelect || !rolSelect || !statusDiv) {
+        return;
+    }
+
+    statusDiv.innerHTML = '<p class="text-zinc-400 text-sm">Modifica los campos necesarios</p>';
+    emailInput.classList.remove('border-rose-500');
+
+    idInput.value = id;
+    nombreDiv.textContent = nombre;
+    dniDiv.textContent = dni;
+    emailInput.value = email || '';
+    areaSelect.value = areaId || '';
+    rolSelect.value = (rol || '').toLowerCase().replace('administrador', 'admin').replace('empleado', 'empleado').replace('supervisor', 'supervisor');
+    
+    const modal = document.getElementById('modalEditarEmpleado');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+// Cerrar modal
+function cerrarModalEditarEmpleado() {
+    const modal = document.getElementById('modalEditarEmpleado');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function esEmailValido(valor) {
+    // Validación sencilla en frontend para feedback rápido
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(valor);
+}
+
+// Guardar cambios
+function guardarCambiosEmpleado() {
+    const empleadoId = document.getElementById('empleado-id').value;
+    const emailInput = document.getElementById('modal-email');
+    const areaId = document.getElementById('modal-area').value;
+    const rol = document.getElementById('modal-rol').value;
+    const statusDiv = document.getElementById('modal-status');
+    const guardarBtn = document.querySelector('#modalEditarEmpleado button[onclick="guardarCambiosEmpleado()"]');
+
+    const email = (emailInput.value || '').trim();
+
+    emailInput.classList.remove('border-rose-500');
+
+    if (!email) {
+        statusDiv.innerHTML = '<p class="text-rose-400 text-sm">❌ El correo es requerido</p>';
+        emailInput.classList.add('border-rose-500');
+        emailInput.focus();
+        return;
+    }
+    if (!esEmailValido(email)) {
+        statusDiv.innerHTML = '<p class="text-rose-400 text-sm">❌ El correo no tiene un formato válido</p>';
+        emailInput.classList.add('border-rose-500');
+        emailInput.focus();
+        return;
+    }
+
+    statusDiv.innerHTML = '<p class="text-amber-400 text-sm animate-pulse">⏳ Guardando cambios...</p>';
+    if (guardarBtn) {
+        guardarBtn.disabled = true;
+        guardarBtn.classList.add('opacity-70', 'cursor-not-allowed');
+    }
+
+    fetch(`/api/empleado/${empleadoId}/actualizar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            email: email,
+            area: areaId || null,
+            rol: rol
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = '<p class="text-emerald-400 text-sm">✅ Cambios guardados correctamente</p>';
+            setTimeout(() => {
+                cerrarModalEditarEmpleado();
+                location.reload();
+            }, 1200);
+        } else {
+            statusDiv.innerHTML = `<p class="text-rose-400 text-sm">❌ ${data.message}</p>`;
+        }
+    })
+    .catch(e => {
+        statusDiv.innerHTML = `<p class="text-rose-400 text-sm">❌ Error: ${e.message}</p>`;
+    })
+    .finally(() => {
+        if (guardarBtn) {
+            guardarBtn.disabled = false;
+            guardarBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+    });
+}
+</script>
+{% endblock %}

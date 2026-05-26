@@ -1,0 +1,111 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Reportes de Asistencia{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-zinc-200 mb-1">Reportes de Asistencia</h2>
+            <p class="text-sm text-zinc-400">Análisis detallado de puntualidad y horas trabajadas.</p>
+        </div>
+        <div class="flex gap-3">
+            <button class="btn-ghost px-4 py-2.5 rounded-lg text-sm flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                Exportar PDF
+            </button>
+            <a href="{% url 'exportar_reporte_excel' %}?{{ request.GET.urlencode }}" class="btn-neo px-4 py-2.5 rounded-lg text-sm flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Exportar Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="glass rounded-2xl p-6 space-y-4 overflow-visible relative z-50">
+        <div class="flex items-center gap-2 text-amber-300 font-semibold text-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+            Filtros Avanzados
+        </div>
+        <form method="GET" action="" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div>
+                <label class="block text-xs font-semibold text-zinc-400 mb-2">Fecha Inicio</label>
+                <input type="date" name="fecha_inicio" class="w-full text-sm py-2 rounded-lg bg-white/5 border border-white/10 text-zinc-200" value="{{ request.GET.fecha_inicio }}">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-zinc-400 mb-2">Fecha Fin</label>
+                <input type="date" name="fecha_fin" class="w-full text-sm py-2 rounded-lg bg-white/5 border border-white/10 text-zinc-200" value="{{ request.GET.fecha_fin }}">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-zinc-400 mb-2">Área</label>
+                <select name="area" class="select-modern">
+                    <option value="">Todas</option>
+                    {% for ar in areas_list %}
+                        <option value="{{ ar.id }}" {% if request.GET.area == ar.id|stringformat:"s" %}selected{% endif %}>{{ ar.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-zinc-400 mb-2">Empleado</label>
+                <select name="empleado" class="select-modern">
+                    <option value="">Todos</option>
+                    {% for emp in empleados_list %}
+                        <option value="{{ emp.id }}" {% if request.GET.empleado == emp.id|stringformat:"s" %}selected{% endif %}>{{ emp.get_full_name|default:emp.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="w-full btn-neo py-2 rounded-lg text-sm font-semibold">
+                    Aplicar Filtros
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table de Reportes -->
+    <div class="glass rounded-2xl p-6">
+        <h3 class="text-lg font-semibold text-zinc-200 mb-6">Detalle de Asistencia</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-zinc-300">
+                <thead>
+                    <tr class="text-left text-zinc-400 border-b border-white/10">
+                        <th class="py-3 px-4">Empleado</th>
+                        <th class="py-3 px-4">Fecha</th>
+                        <th class="py-3 px-4">Entrada</th>
+                        <th class="py-3 px-4">Salida</th>
+                        <th class="py-3 px-4">Estado</th>
+                        <th class="py-3 px-4">Horas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                        <td class="py-3 px-4">{{ registro.empleado.get_full_name|default:registro.empleado.username }}</td>
+                        <td class="py-3 px-4">{{ registro.fecha }}</td>
+                        <td class="py-3 px-4">{{ registro.hora_entrada|default:"-" }}</td>
+                        <td class="py-3 px-4">{{ registro.hora_salida|default:"-" }}</td>
+                        <td class="py-3 px-4">
+                            {% if registro.estado == "a_tiempo" %}
+                                <span class="text-emerald-300">Puntual</span>
+                            {% elif registro.estado == "tardanza" %}
+                                <span class="text-amber-300">Tardanza</span>
+                            {% else %}
+                                <span class="text-rose-300">Falta</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">{{ registro.horas_netas_trabajadas|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-8 px-4 text-center text-zinc-500">
+                            Sin registros disponibles
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

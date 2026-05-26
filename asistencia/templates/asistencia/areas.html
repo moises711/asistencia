@@ -1,0 +1,229 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Áreas de Práctica{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-zinc-200 mb-1">Áreas de Práctica</h2>
+            <p class="text-sm text-zinc-400">Gestión de áreas para empleados</p>
+        </div>
+        <button id="toggle-crear-area" class="btn-neo px-5 py-2.5 rounded-lg text-sm flex items-center gap-2 w-fit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Crear Área
+        </button>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for area in areas %}
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-zinc-200 text-lg">{{ area.nombre }}</h3>
+                <p class="text-sm text-zinc-400 mt-2 leading-relaxed">{{ area.descripcion|default:"Sin descripción" }}</p>
+            </div>
+            <div class="mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
+                <div class="text-xs font-semibold text-zinc-400 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    {{ area.empleados.count }} asignados
+                </div>
+                <button onclick="abrirModalEditarArea({{ area.id }}, '{{ area.nombre|escapejs }}', '{{ area.descripcion|default:''|escapejs }}')"
+                        class="text-blue-400 font-semibold text-sm hover:underline">
+                    Editar
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full glass rounded-2xl p-12 text-center">
+            <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-zinc-500 mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-zinc-200">No hay áreas registradas</h3>
+            <p class="text-sm text-zinc-400 mt-1">Comienza creando tu primera área de trabajo.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Crear Área -->
+<div id="area-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div id="area-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md glass rounded-2xl p-6 md:p-8">
+        <div class="flex items-start justify-between gap-4 mb-6">
+            <div>
+                <div class="text-lg font-semibold text-zinc-200">Crear Nueva Área</div>
+                <div class="text-sm text-zinc-400 mt-1">Ingresa los datos para la nueva área.</div>
+            </div>
+            <button id="close-area-modal" type="button" class="btn-ghost px-2 py-1 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form method="post" action="{% url 'areas' %}" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Nombre del Área</label>
+                {{ form.nombre }}
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Descripción (Opcional)</label>
+                {{ form.descripcion }}
+            </div>
+            <div class="pt-4 flex gap-3">
+                <button type="button" id="cancel-area" class="flex-1 btn-ghost py-2.5 rounded-xl text-sm">Cancelar</button>
+                <button type="submit" class="flex-1 btn-neo py-2.5 rounded-xl text-sm">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Área -->
+<div id="area-edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div id="area-edit-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="cerrarModalEditarArea()"></div>
+    <div class="relative w-full max-w-md glass rounded-2xl p-6 md:p-8">
+        <div class="flex items-start justify-between gap-4 mb-6">
+            <div>
+                <div class="text-lg font-semibold text-zinc-200">Editar Área</div>
+                <div class="text-sm text-zinc-400 mt-1">Modifica los detalles de esta área.</div>
+            </div>
+            <button onclick="cerrarModalEditarArea()" type="button" class="btn-ghost px-2 py-1 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form id="formEditarArea" method="post" action="" class="space-y-4" onsubmit="event.preventDefault(); guardarCambiosArea();">
+            {% csrf_token %}
+            <input type="hidden" id="edit-area-id">
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Nombre del Área</label>
+                <input type="text" id="edit-area-nombre" required
+                       class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Descripción (Opcional)</label>
+                <textarea id="edit-area-descripcion" rows="3"
+                          class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition"></textarea>
+            </div>
+            <div id="edit-area-status" class="text-center text-sm mt-2"></div>
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="cerrarModalEditarArea()" class="flex-1 btn-ghost py-2.5 rounded-xl text-sm">Cancelar</button>
+                <button type="submit" class="flex-1 btn-neo py-2.5 rounded-xl text-sm">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    #area-modal form input[type="text"],
+    #area-modal form textarea,
+    #area-edit-modal form input[type="text"],
+    #area-edit-modal form textarea {
+        width: 100%;
+        background: rgba(8, 8, 8, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.875rem;
+        outline: none;
+        transition: border 0.2s ease;
+    }
+
+    #area-modal form input:focus,
+    #area-modal form textarea:focus,
+    #area-edit-modal form input:focus,
+    #area-edit-modal form textarea:focus {
+        border-color: rgba(255, 59, 59, 0.6);
+        box-shadow: 0 0 0 3px rgba(255, 59, 59, 0.2);
+    }
+</style>
+
+<script>
+    const openAreaModal = document.getElementById('toggle-crear-area');
+    const areaModal = document.getElementById('area-modal');
+    const closeAreaModal = document.getElementById('close-area-modal');
+    const cancelAreaBtn = document.getElementById('cancel-area');
+    const areaModalOverlay = document.getElementById('area-modal-overlay');
+
+    const showAreaModal = () => {
+        areaModal.classList.remove('hidden');
+        areaModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    };
+
+    const hideAreaModal = () => {
+        areaModal.classList.add('hidden');
+        areaModal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    openAreaModal?.addEventListener('click', showAreaModal);
+    closeAreaModal?.addEventListener('click', hideAreaModal);
+    cancelAreaBtn?.addEventListener('click', hideAreaModal);
+    areaModalOverlay?.addEventListener('click', hideAreaModal);
+    
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            hideAreaModal();
+            cerrarModalEditarArea();
+        }
+    });
+
+    // EDIT AREA LOGIC
+    function abrirModalEditarArea(id, nombre, descripcion) {
+        document.getElementById('edit-area-id').value = id;
+        document.getElementById('edit-area-nombre').value = nombre;
+        document.getElementById('edit-area-descripcion').value = descripcion;
+        document.getElementById('edit-area-status').innerHTML = '';
+
+        const editModal = document.getElementById('area-edit-modal');
+        editModal.classList.remove('hidden');
+        editModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function cerrarModalEditarArea() {
+        const editModal = document.getElementById('area-edit-modal');
+        editModal.classList.add('hidden');
+        editModal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function guardarCambiosArea() {
+        const id = document.getElementById('edit-area-id').value;
+        const nombre = document.getElementById('edit-area-nombre').value;
+        const descripcion = document.getElementById('edit-area-descripcion').value;
+        const statusDiv = document.getElementById('edit-area-status');
+
+        statusDiv.innerHTML = '<p class="text-amber-400 animate-pulse">⏳ Guardando cambios...</p>';
+
+        fetch(`/api/area/${id}/actualizar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                descripcion: descripcion
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                statusDiv.innerHTML = '<p class="text-emerald-400">✅ Área actualizada con éxito</p>';
+                setTimeout(() => {
+                    cerrarModalEditarArea();
+                    location.reload();
+                }, 1500);
+            } else {
+                statusDiv.innerHTML = `<p class="text-rose-400">❌ Error: ${data.message}</p>`;
+            }
+        })
+        .catch(e => {
+            statusDiv.innerHTML = `<p class="text-rose-400">❌ Error de red: ${e.message}</p>`;
+        });
+    }
+</script>
+{% endblock %}

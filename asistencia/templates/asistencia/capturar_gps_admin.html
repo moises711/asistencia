@@ -1,0 +1,308 @@
+{% extends "asistencia/base.html" %}
+
+{% block title %}Capturar Ubicación GPS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="glass rounded-2xl p-6 md:p-8 fade-in">
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-zinc-400 uppercase tracking-[0.2em]">Configuración de Oficina</div>
+                    <h1 class="text-3xl md:text-4xl font-semibold mt-2">📍 Capturar Ubicación GPS</h1>
+                </div>
+            </div>
+            
+            <p class="text-zinc-300 mt-4">
+                Usa esta herramienta para capturar las coordenadas GPS exactas de la oficina.
+                El sistema guardará automáticamente esta ubicación para validar asistencias.
+            </p>
+        </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Panel Captura -->
+        <div class="glass rounded-2xl p-6 space-y-4 overflow-visible relative z-50">
+            <div class="font-semibold text-lg">Capturar Ubicación Actual</div>
+            
+            <div class="space-y-4">
+                <button id="btn-capturar-gps" 
+                        class="w-full btn-neo py-3 rounded-xl flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span>📍 Capturar Mi Ubicación Actual</span>
+                </button>
+
+                <!-- Status -->
+                <div id="gps-status" class="hidden p-4 rounded-xl border" role="alert">
+                    <div class="flex items-start gap-3">
+                        <div id="gps-icon" class="text-xl mt-1">⏳</div>
+                        <div>
+                            <div id="gps-titulo" class="font-semibold text-sm"></div>
+                            <div id="gps-mensaje" class="text-sm mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información capturada -->
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm text-zinc-400 mb-2">Latitud</label>
+                        <input type="number" id="latitud" name="latitud" step="0.000001"
+                               class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-zinc-200
+                                      focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all"
+                               placeholder="ej. 10.5123456"
+                               {% if config_gps %}value="{{ config_gps.latitud }}"{% endif %} />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-zinc-400 mb-2">Longitud</label>
+                        <input type="number" id="longitud" name="longitud" step="0.000001"
+                               class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-zinc-200
+                                      focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all"
+                               placeholder="ej. -75.3456789"
+                               {% if config_gps %}value="{{ config_gps.longitud }}"{% endif %} />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-zinc-400 mb-2">Radio Permitido (metros)</label>
+                        <input type="number" id="radio" name="radio" min="5" step="5"
+                               class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-zinc-200
+                                      focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all"
+                               placeholder="ej. 20"
+                               value="{% if config_gps %}{{ config_gps.radio_permitido_metros }}{% else %}20{% endif %}" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-zinc-400 mb-2">Nombre de la Oficina</label>
+                        <input type="text" id="nombre" name="nombre"
+                               class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-zinc-200
+                                      focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all"
+                               placeholder="ej. Oficina Principal"
+                               value="{% if config_gps %}{{ config_gps.nombre }}{% else %}Oficina Principal{% endif %}" />
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="flex gap-3 pt-4">
+                    <button id="btn-guardar" class="flex-1 btn-neo py-3 rounded-xl">
+                        💾 Guardar Ubicación
+                    </button>
+                    <a href="{% url 'admin:asistencia_configuraciongps_changelist' %}" 
+                       class="flex-1 btn-ghost py-3 rounded-xl text-center">
+                        ← Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Información -->
+        <div class="space-y-6">
+            <!-- Ubicación Actual -->
+            <div class="glass rounded-2xl p-6 space-y-4">
+                <div class="font-semibold text-lg">Ubicación Guardada</div>
+                
+                {% if config_gps %}
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-start justify-between p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                            <div>
+                                <div class="text-zinc-400">Nombre</div>
+                                <div class="font-semibold text-zinc-200">{{ config_gps.nombre }}</div>
+                            </div>
+                            <span class="text-emerald-400">✓ Activa</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="p-3 bg-black/40 border border-white/10 rounded-lg">
+                                <div class="text-zinc-400">Latitud</div>
+                                <div class="font-mono text-zinc-200">{{ config_gps.latitud }}</div>
+                            </div>
+                            <div class="p-3 bg-black/40 border border-white/10 rounded-lg">
+                                <div class="text-zinc-400">Longitud</div>
+                                <div class="font-mono text-zinc-200">{{ config_gps.longitud }}</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-black/40 border border-white/10 rounded-lg">
+                            <div class="text-zinc-400">Radio Permitido</div>
+                            <div class="font-semibold text-zinc-200">{{ config_gps.radio_permitido_metros }} metros</div>
+                        </div>
+
+                        <a href="https://www.google.com/maps/?q={{ config_gps.latitud }},{{ config_gps.longitud }}"
+                           target="_blank" class="block w-full p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg
+                                               text-center text-indigo-400 hover:bg-indigo-500/20 transition-colors">
+                            📍 Ver en Google Maps
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-sm">
+                        ⚠️ No hay ubicación configurada. Captura una nueva.
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Instrucciones -->
+            <div class="glass rounded-2xl p-6 space-y-4 overflow-visible relative z-50">
+                <div class="font-semibold text-lg">📋 Instrucciones</div>
+                
+                <ol class="space-y-3 text-sm text-zinc-300 list-decimal list-inside">
+                    <li>Click en el botón <strong>Capturar Mi Ubicación Actual</strong></li>
+                    <li>Permite acceso a GPS cuando el navegador lo solicite</li>
+                    <li>Espera a que se llenen los campos automáticamente</li>
+                    <li>Ajusta el radio permitido si es necesario</li>
+                    <li>Click en <strong>Guardar Ubicación</strong></li>
+                    <li>¡Listo! La ubicación se guardará para validación de asistencias</li>
+                </ol>
+
+                <div class="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-blue-300 text-sm">
+                    💡 <strong>Tip:</strong> Radio 20m = Muy restrictivo (dentro del edificio)<br>
+                    Radio 50m = Restrictivo (edificio + entrada)<br>
+                    Radio 100m = Moderado (área completa)
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('btn-capturar-gps').addEventListener('click', function() {
+        const btn = this;
+        const statusDiv = document.getElementById('gps-status');
+        const icon = document.getElementById('gps-icon');
+        const titulo = document.getElementById('gps-titulo');
+        const mensaje = document.getElementById('gps-mensaje');
+        
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        
+        statusDiv.classList.remove('hidden');
+        statusDiv.className = 'p-4 rounded-xl border border-amber-500/30 bg-amber-500/10';
+        icon.textContent = '⏳';
+        titulo.textContent = 'Obteniendo ubicación...';
+        titulo.className = 'font-semibold text-sm text-amber-300';
+        mensaje.textContent = 'Asegúrate de estar en la ubicación exacta de la oficina';
+        
+        if (!navigator.geolocation) {
+            statusDiv.className = 'p-4 rounded-xl border border-rose-500/30 bg-rose-500/10';
+            icon.textContent = '❌';
+            titulo.textContent = 'Error: GPS no soportado';
+            titulo.className = 'font-semibold text-sm text-rose-400';
+            mensaje.textContent = 'Tu navegador no soporta geolocalización';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const precision = position.coords.accuracy;
+                
+                // Llenar campos
+                document.getElementById('latitud').value = lat;
+                document.getElementById('longitud').value = lon;
+                
+                // Mostrar éxito
+                statusDiv.className = 'p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10';
+                icon.textContent = '✅';
+                titulo.textContent = '¡Ubicación capturada exitosamente!';
+                titulo.className = 'font-semibold text-sm text-emerald-400';
+                mensaje.innerHTML = `
+                    📍 Latitud: <strong>${lat.toFixed(6)}</strong><br>
+                    📍 Longitud: <strong>${lon.toFixed(6)}</strong><br>
+                    📏 Precisión: <strong>${precision.toFixed(1)}m</strong>
+                `;
+                
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            },
+            function(error) {
+                let errorMsg = 'Error desconocido';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMsg = 'Permiso denegado. Habilita GPS en tu navegador.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMsg = 'Información de GPS no disponible.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMsg = 'Tiempo de espera agotado. Intenta de nuevo.';
+                        break;
+                }
+                
+                statusDiv.className = 'p-4 rounded-xl border border-rose-500/30 bg-rose-500/10';
+                icon.textContent = '❌';
+                titulo.textContent = 'Error al obtener ubicación';
+                titulo.className = 'font-semibold text-sm text-rose-400';
+                mensaje.textContent = errorMsg;
+                
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
+    });
+    
+    // Guardar ubicación
+    document.getElementById('btn-guardar').addEventListener('click', async function() {
+        const btn = this;
+        const latitud = document.getElementById('latitud').value;
+        const longitud = document.getElementById('longitud').value;
+        const radio = document.getElementById('radio').value;
+        const nombre = document.getElementById('nombre').value;
+        
+        if (!latitud || !longitud) {
+            window.showToast('Debes capturar o ingresar las coordenadas', 'error');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.textContent = '💾 Guardando...';
+        btn.style.opacity = '0.6';
+        
+        try {
+            const respuesta = await fetch('{% url "guardar_gps_admin" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    latitud: parseFloat(latitud),
+                    longitud: parseFloat(longitud),
+                    radio: parseInt(radio),
+                    nombre: nombre
+                })
+            });
+            
+            const datos = await respuesta.json();
+            
+            if (datos.success) {
+                window.showToast('✅ Ubicación guardada correctamente', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                window.showToast(datos.message || 'Error al guardar', 'error');
+                btn.disabled = false;
+                btn.textContent = '💾 Guardar Ubicación';
+                btn.style.opacity = '1';
+            }
+        } catch (error) {
+            window.showToast('Error de conexión', 'error');
+            btn.disabled = false;
+            btn.textContent = '💾 Guardar Ubicación';
+            btn.style.opacity = '1';
+        }
+    });
+</script>
+{% endblock %}

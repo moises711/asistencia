@@ -1,0 +1,60 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Justificaciones Pendientes{% endblock %}
+
+{% block admin_content %}
+<div class="glass rounded-2xl p-6 space-y-6">
+    <div>
+        <h2 class="text-xl font-semibold">Solicitudes pendientes</h2>
+        <p class="text-sm text-zinc-400">Revisa y aprueba las justificaciones de tu equipo.</p>
+    </div>
+
+    <div class="grid gap-4">
+        {% for j in justificaciones %}
+        <div class="p-5 rounded-xl border border-white/10 bg-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4" id="justificacion-{{ j.id }}">
+            <div>
+                <div class="text-sm font-semibold text-zinc-200">{{ j.asistencia.empleado.get_full_name|default:j.asistencia.empleado.username }}</div>
+                <div class="text-xs text-zinc-400 mt-1">Fecha de falta/tardanza: {{ j.asistencia.fecha }}</div>
+                <div class="mt-3 text-sm text-zinc-300 italic">"{{ j.motivo }}"</div>
+            </div>
+            <div class="flex gap-2 shrink-0">
+                <button onclick="procesar({{ j.id }}, 'aprobar')" class="btn-neo px-4 py-2 rounded-lg text-sm bg-emerald-600/80 hover:bg-emerald-500">Aprobar</button>
+                <button onclick="procesar({{ j.id }}, 'rechazar')" class="btn-ghost px-4 py-2 rounded-lg text-sm border-rose-500/30 text-rose-300 hover:bg-rose-500/20">Rechazar</button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-sm text-zinc-400 py-8 text-center border border-white/5 rounded-xl bg-white/5">
+            No hay solicitudes pendientes.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    async function procesar(id, accion) {
+        try {
+            const formData = new FormData();
+            formData.append('accion', accion);
+            
+            const res = await fetch(`/justificaciones/procesar/${id}/`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                window.showToast(data.message, 'success');
+                const el = document.getElementById(`justificacion-${id}`);
+                el.style.opacity = '0';
+                el.style.transform = 'scale(0.95)';
+                setTimeout(() => el.remove(), 300);
+            } else {
+                window.showToast(data.message, 'error');
+            }
+        } catch (error) {
+            window.showToast('Error de conexión', 'error');
+        }
+    }
+</script>
+{% endblock %}

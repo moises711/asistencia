@@ -1,0 +1,48 @@
+{% extends "asistencia/base.html" %}
+
+{% block content %}
+<div class="lg:hidden mb-4">
+    <button id="mobile-menu-btn" class="glass w-full py-3 px-4 rounded-xl flex items-center justify-between text-zinc-300">
+        <span class="font-semibold text-sm">Menu de Administracion</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+    </button>
+</div>
+
+<div class="grid lg:grid-cols-[260px_1fr] gap-6">
+    <aside id="admin-sidebar" class="hidden lg:block glass rounded-2xl p-6 space-y-6 lg:sticky lg:top-6 h-fit transition-all duration-300">
+        <div>
+            <div class="text-[11px] uppercase tracking-[0.28em] text-zinc-400">Asistencia</div>
+            <div class="mt-4 grid gap-3">
+                <a href="{% url 'admin_dashboard' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if request.path == '/admin-dashboard/' %}bg-white/10 text-white border-white/20{% endif %}">Dashboard</a>
+                <a href="{% url 'panel_control' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/panel-control/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Personal</a>
+                <a href="{% url 'horarios' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/horarios/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Horarios</a>
+                <a href="{% url 'areas' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/areas/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Areas</a>
+            </div>
+        </div>
+        <div>
+            <div class="text-[11px] uppercase tracking-[0.28em] text-zinc-400">Reportes</div>
+            <div class="mt-4 grid gap-3">
+                <a href="{% url 'reporte' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/reporte' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Reporte general</a>
+                <a href="{% url 'actividades_empleados' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/actividades/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Actividades</a>
+            </div>
+        </div>
+    </aside>
+
+    <section class="space-y-6 min-w-0">
+        {% block admin_content %}{% endblock %}
+    </section>
+</div>
+
+<script>
+    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+        const sidebar = document.getElementById('admin-sidebar');
+        if (sidebar.classList.contains('hidden')) {
+            sidebar.classList.remove('hidden');
+            sidebar.classList.add('block');
+        } else {
+            sidebar.classList.remove('block');
+            sidebar.classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

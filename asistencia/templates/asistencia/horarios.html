@@ -1,0 +1,603 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Horarios{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-zinc-200 mb-1">Horarios</h2>
+            <p class="text-sm text-zinc-400">Gestión de turnos de trabajo y jornadas laborales</p>
+        </div>
+        <button id="toggle-crear-horario" class="btn-neo px-5 py-2.5 rounded-lg text-sm flex items-center gap-2 w-fit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Crear Horario
+        </button>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for horario in horarios %}
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="font-bold text-zinc-200 text-lg">{{ horario.nombre }}</h3>
+                <button onclick="abrirModalEditarHorario({{ horario.id }}, '{{ horario.nombre }}', '{{ horario.hora_entrada|time:'H:i' }}', '{{ horario.hora_salida|time:'H:i' }}', {{ horario.tolerancia_minutos }}, {% if horario.lunes %}true{% else %}false{% endif %}, {% if horario.martes %}true{% else %}false{% endif %}, {% if horario.miercoles %}true{% else %}false{% endif %}, {% if horario.jueves %}true{% else %}false{% endif %}, {% if horario.viernes %}true{% else %}false{% endif %}, {% if horario.sabado %}true{% else %}false{% endif %}, {% if horario.domingo %}true{% else %}false{% endif %})"
+                        class="text-zinc-400 hover:text-zinc-200" title="Editar Horario">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                </button>
+            </div>
+            
+            <div class="mb-6">
+                <div class="bg-white/10 text-amber-300 font-bold px-4 py-2 rounded-lg text-center">
+                    {{ horario.hora_entrada|time:"H:i" }} - {{ horario.hora_salida|time:"H:i" }}
+                </div>
+                <div class="text-xs font-semibold text-zinc-400 mt-2 flex flex-col">
+                    <span>Tolerancia: {{ horario.tolerancia_minutos }} min</span>
+                </div>
+            </div>
+            
+            <div class="pt-4 border-t border-white/10">
+                <div class="flex gap-1 justify-between">
+                    <div class="flex-1 text-center py-1 rounded text-xs font-bold {% if horario.lunes %}bg-emerald-500/30 text-emerald-300{% else %}bg-white/5 text-zinc-500{% endif %}">L</div>
+                    <div class="flex-1 text-center py-1 rounded text-xs font-bold {% if horario.martes %}bg-emerald-500/30 text-emerald-300{% else %}bg-white/5 text-zinc-500{% endif %}">M</div>
+                    <div class="flex-1 text-center py-1 rounded text-xs font-bold {% if horario.miercoles %}bg-emerald-500/30 text-emerald-300{% else %}bg-white/5 text-zinc-500{% endif %}">X</div>
+                    <div class="flex-1 text-center py-1 rounded text-xs font-bold {% if horario.jueves %}bg-emerald-500/30 text-emerald-300{% else %}bg-white/5 text-zinc-500{% endif %}">J</div>
+                    <div class="flex-1 text-center py-1 rounded text-xs font-bold {% if horario.viernes %}bg-emerald-500/30 text-emerald-300{% else %}bg-white/5 text-zinc-500{% endif %}">V</div>
+                    <div class="flex-1 text-center py-1 rounded text-xs font-bold {% if horario.sabado %}bg-emerald-500/30 text-emerald-300{% else %}bg-white/5 text-zinc-500{% endif %}">S</div>
+                    <div class="flex-1 text-center py-1 rounded text-xs font-bold {% if horario.domingo %}bg-emerald-500/30 text-emerald-300{% else %}bg-white/5 text-zinc-500{% endif %}">D</div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full glass rounded-2xl p-12 text-center">
+            <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-zinc-500 mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-zinc-200">No hay horarios registrados</h3>
+            <p class="text-sm text-zinc-400 mt-1">Comienza creando tu primer turno de trabajo.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Días Feriados Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 mt-8">
+        <!-- List of Holidays -->
+        <div class="glass rounded-2xl p-6">
+            <div class="mb-4">
+                <h3 class="font-bold text-zinc-200 text-lg">Días Feriados</h3>
+                <p class="text-xs text-zinc-400">Los días registrados aquí no computarán faltas en el sistema.</p>
+            </div>
+            <div class="overflow-x-auto max-h-[300px] overflow-y-auto">
+                <table class="w-full text-sm text-zinc-300">
+                    <thead>
+                        <tr class="text-left text-zinc-400 border-b border-white/10 sticky top-0 bg-zinc-900/90 backdrop-blur-sm z-10">
+                            <th class="py-2.5 px-3">Fecha</th>
+                            <th class="py-2.5 px-3">Descripción</th>
+                            <th class="py-2.5 px-3 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for feriado in feriados %}
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                            <td class="py-2.5 px-3 font-mono text-amber-300">{{ feriado.fecha|date:"Y-m-d" }}</td>
+                            <td class="py-2.5 px-3">{{ feriado.descripcion }}</td>
+                            <td class="py-2.5 px-3 text-right">
+                                <form method="post" action="{% url 'eliminar_feriado' feriado.id %}" onsubmit="return confirm('¿Seguro que deseas eliminar este feriado?');" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-rose-400 hover:text-rose-300 transition font-semibold text-xs bg-rose-500/10 hover:bg-rose-500/20 px-2 py-1 rounded">
+                                        Eliminar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="py-8 text-center text-zinc-500 italic">
+                                No hay días feriados registrados.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Add Holiday Form -->
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-zinc-200 text-lg mb-2">Registrar Día Feriado</h3>
+                <p class="text-xs text-zinc-400 mb-4">Agrega un día feriado para evitar que se marquen faltas automáticas.</p>
+            </div>
+            <form method="post" action="{% url 'crear_feriado' %}" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 mb-1.5">Fecha del Feriado</label>
+                    <input type="date" name="fecha" required
+                           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 mb-1.5">Descripción</label>
+                    <input type="text" name="descripcion" required placeholder="Ej. Año Nuevo, Navidad"
+                           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
+                </div>
+                <button type="submit" class="w-full btn-neo py-2.5 rounded-xl text-sm font-semibold mt-2">
+                    Registrar Feriado
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 mt-8">
+        <div class="glass rounded-2xl p-6">
+            <div class="mb-4">
+                <h3 class="font-bold text-zinc-200 text-lg">Solicitudes de Permiso</h3>
+                <p class="text-xs text-zinc-400">Revisa y procesa permisos programados antes de marcar faltas.</p>
+            </div>
+            <div class="overflow-x-auto max-h-[300px] overflow-y-auto">
+                <table class="w-full text-sm text-zinc-300">
+                    <thead>
+                        <tr class="text-left text-zinc-400 border-b border-white/10 sticky top-0 bg-zinc-900/90 backdrop-blur-sm z-10">
+                            <th class="py-2.5 px-3">Empleado</th>
+                            <th class="py-2.5 px-3">Rango</th>
+                            <th class="py-2.5 px-3">Motivo</th>
+                            <th class="py-2.5 px-3">Estado</th>
+                            <th class="py-2.5 px-3 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ausencia in ausencias %}
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                            <td class="py-2.5 px-3">{{ ausencia.empleado.get_full_name|default:ausencia.empleado.username }}</td>
+                            <td class="py-2.5 px-3">{{ ausencia.fecha_inicio|date:"Y-m-d" }} - {{ ausencia.fecha_fin|date:"Y-m-d" }}</td>
+                            <td class="py-2.5 px-3">{{ ausencia.motivo }}</td>
+                            <td class="py-2.5 px-3">{{ ausencia.get_estado_display }}</td>
+                            <td class="py-2.5 px-3 text-right">
+                                {% if ausencia.estado == 'pendiente' %}
+                                <form method="post" action="{% url 'procesar_ausencia' ausencia.id %}" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="aprobar">
+                                    <button type="submit" class="text-emerald-300 hover:text-emerald-100 text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded">Aprobar</button>
+                                </form>
+                                <form method="post" action="{% url 'procesar_ausencia' ausencia.id %}" class="inline ml-2">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="rechazar">
+                                    <button type="submit" class="text-rose-300 hover:text-rose-100 text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 px-2 py-1 rounded">Rechazar</button>
+                                </form>
+                                {% else %}
+                                <span class="text-zinc-400 text-xs">Procesado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-zinc-500 italic">No hay solicitudes de permiso pendientes.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-zinc-200 text-lg mb-2">Registrar permiso / ausencia</h3>
+                <p class="text-xs text-zinc-400 mb-4">Crea una ausencia programada para que no se genere falta durante el periodo.</p>
+            </div>
+            <form method="post" action="{% url 'crear_ausencia_programada' %}" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 mb-1.5">Empleado</label>
+                    {{ permiso_form.empleado }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 mb-1.5">Fecha inicio</label>
+                    {{ permiso_form.fecha_inicio }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 mb-1.5">Fecha fin</label>
+                    {{ permiso_form.fecha_fin }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 mb-1.5">Motivo</label>
+                    {{ permiso_form.motivo }}
+                </div>
+                <button type="submit" class="w-full btn-neo py-2.5 rounded-xl text-sm font-semibold mt-2">Guardar Permiso</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="glass rounded-2xl p-6 mt-6">
+        <div class="mb-4">
+            <h3 class="font-bold text-zinc-200 text-lg">Recuperaciones pendientes</h3>
+            <p class="text-xs text-zinc-400">Registra las horas que deben recuperarse antes de marcar nuevas salidas en días no laborables.</p>
+        </div>
+        <div class="overflow-x-auto max-h-[320px] overflow-y-auto">
+            <table class="w-full text-sm text-zinc-300">
+                <thead>
+                    <tr class="text-left text-zinc-400 border-b border-white/10 sticky top-0 bg-zinc-900/90 backdrop-blur-sm z-10">
+                        <th class="py-2.5 px-3">Empleado</th>
+                        <th class="py-2.5 px-3">Fecha falta</th>
+                        <th class="py-2.5 px-3">Horas a recuperar</th>
+                        <th class="py-2.5 px-3">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in recuperaciones %}
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                        <td class="py-2.5 px-3">{{ rec.empleado.get_full_name|default:rec.empleado.username }}</td>
+                        <td class="py-2.5 px-3">{{ rec.fecha_falta|date:"Y-m-d" }}</td>
+                        <td class="py-2.5 px-3">{{ rec.horas_a_recuperar }}</td>
+                        <td class="py-2.5 px-3">{{ rec.get_estado_display }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="py-8 text-center text-zinc-500 italic">No hay recuperaciones pendientes.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<!-- Modal Crear Horario -->
+<div id="horario-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div id="horario-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-lg glass rounded-2xl p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-6">
+            <div>
+                <div class="text-lg font-semibold text-zinc-200">Crear Nuevo Horario</div>
+                <div class="text-sm text-zinc-400 mt-1">Configura el turno de trabajo y días laborables.</div>
+            </div>
+            <button id="close-horario-modal" type="button" class="btn-ghost px-2 py-1 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form method="post" action="{% url 'horarios' %}" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Nombre del Horario</label>
+                {{ form.nombre }}
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-zinc-300 mb-2">Hora Entrada</label>
+                    {{ form.hora_entrada }}
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-zinc-300 mb-2">Hora Salida</label>
+                    {{ form.hora_salida }}
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Tolerancia (minutos)</label>
+                {{ form.tolerancia_minutos }}
+            </div>
+            
+            <div class="pt-4">
+                <label class="block text-sm font-semibold text-zinc-300 mb-3">Días Laborables</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        {{ form.lunes }} Lunes
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        {{ form.martes }} Martes
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        {{ form.miercoles }} Miércoles
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        {{ form.jueves }} Jueves
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        {{ form.viernes }} Viernes
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        {{ form.sabado }} Sábado
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        {{ form.domingo }} Domingo
+                    </label>
+                </div>
+            </div>
+            
+            <div class="pt-6 flex gap-3">
+                <button type="button" id="cancel-horario" class="flex-1 btn-ghost py-2.5 rounded-xl text-sm">Cancelar</button>
+                <button type="submit" class="flex-1 btn-neo py-2.5 rounded-xl text-sm">Guardar Horario</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Horario -->
+<div id="horario-edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div id="horario-edit-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="cerrarModalEditarHorario()"></div>
+    <div class="relative w-full max-w-lg glass rounded-2xl p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-6">
+            <div>
+                <div class="text-lg font-semibold text-zinc-200">Editar Horario</div>
+                <div class="text-sm text-zinc-400 mt-1">Modifica la configuración de este horario.</div>
+            </div>
+            <button onclick="cerrarModalEditarHorario()" type="button" class="btn-ghost px-2 py-1 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form id="formEditarHorario" method="post" action="" class="space-y-4" onsubmit="event.preventDefault(); guardarCambiosHorario();">
+            {% csrf_token %}
+            <input type="hidden" id="edit-horario-id">
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Nombre del Horario</label>
+                <input type="text" id="edit-horario-nombre" required
+                       class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-zinc-300 mb-2">Hora Entrada</label>
+                    <input type="time" id="edit-horario-entrada" required
+                           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-zinc-300 mb-2">Hora Salida</label>
+                    <input type="time" id="edit-horario-salida" required
+                           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-zinc-300 mb-2">Tolerancia (minutos)</label>
+                <input type="number" id="edit-horario-tolerancia" required min="0"
+                       class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
+            </div>
+            
+            <div class="pt-4">
+                <label class="block text-sm font-semibold text-zinc-300 mb-3">Días Laborables</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        <input type="checkbox" id="edit-horario-lunes" class="checkbox-custom"> Lunes
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        <input type="checkbox" id="edit-horario-martes" class="checkbox-custom"> Martes
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        <input type="checkbox" id="edit-horario-miercoles" class="checkbox-custom"> Miércoles
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        <input type="checkbox" id="edit-horario-jueves" class="checkbox-custom"> Jueves
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        <input type="checkbox" id="edit-horario-viernes" class="checkbox-custom"> Viernes
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        <input type="checkbox" id="edit-horario-sabado" class="checkbox-custom"> Sábado
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 font-medium cursor-pointer">
+                        <input type="checkbox" id="edit-horario-domingo" class="checkbox-custom"> Domingo
+                    </label>
+                </div>
+            </div>
+            
+            <div id="edit-horario-status" class="text-center text-sm mt-2"></div>
+            
+            <div class="pt-6 flex gap-3">
+                <button type="button" onclick="cerrarModalEditarHorario()" class="flex-1 btn-ghost py-2.5 rounded-xl text-sm">Cancelar</button>
+                <button type="submit" class="flex-1 btn-neo py-2.5 rounded-xl text-sm">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    #horario-modal form input[type="text"],
+    #horario-modal form input[type="time"],
+    #horario-modal form input[type="number"],
+    input[type="text"],
+    input[type="date"],
+    input[type="time"],
+    input[type="number"] {
+        width: 100%;
+        background: rgba(8, 8, 8, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.875rem;
+        outline: none;
+        transition: border 0.2s ease;
+    }
+
+    #horario-modal form input:focus,
+    input:focus {
+        border-color: rgba(255, 59, 59, 0.6);
+        box-shadow: 0 0 0 3px rgba(255, 59, 59, 0.2);
+    }
+    
+    /* Select styles - use select-modern class instead */
+    #horario-modal form select,
+    select {
+        width: 100%;
+        background: rgba(20, 20, 20, 0.6);
+        border: 2px solid rgba(255, 59, 59, 0.4);
+        color: var(--text);
+        border-radius: 14px;
+        padding: 11px 14px 11px 14px;
+        font-size: 0.875rem;
+        outline: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ff3b3b' d='M1 4l5 4 5-4'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 38px;
+    }
+
+    #horario-modal form select:hover,
+    select:hover {
+        border-color: rgba(255, 59, 59, 0.7);
+        background-color: rgba(25, 25, 25, 0.9);
+        box-shadow: 0 0 25px rgba(255, 59, 59, 0.25), inset 0 0 0 1px rgba(255, 59, 59, 0.15);
+    }
+
+    #horario-modal form select:focus,
+    select:focus {
+        border-color: rgba(255, 59, 59, 0.8);
+        box-shadow: 0 0 0 4px rgba(255, 59, 59, 0.25), inset 0 0 0 2px rgba(255, 59, 59, 0.15);
+    }
+    
+    select option {
+        background: rgba(15, 15, 15, 0.95);
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 59, 59, 0.3);
+    }
+    
+    select option:checked {
+        background: linear-gradient(135deg, rgba(255, 59, 59, 0.6), rgba(255, 107, 61, 0.6));
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    #horario-modal input[type="checkbox"],
+    .checkbox-custom {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        appearance: none;
+        -webkit-appearance: none;
+        outline: none;
+        cursor: pointer;
+        accent-color: #ff3b3b;
+    }
+    
+    #horario-modal input[type="checkbox"]:checked,
+    .checkbox-custom:checked {
+        background-color: #ff3b3b;
+        border-color: #ff3b3b;
+    }
+</style>
+
+<script>
+    const openHorarioModal = document.getElementById('toggle-crear-horario');
+    const horarioModal = document.getElementById('horario-modal');
+    const closeHorarioModal = document.getElementById('close-horario-modal');
+    const cancelHorarioBtn = document.getElementById('cancel-horario');
+    const horarioModalOverlay = document.getElementById('horario-modal-overlay');
+
+    const showHorarioModal = () => {
+        horarioModal.classList.remove('hidden');
+        horarioModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    };
+
+    const hideHorarioModal = () => {
+        horarioModal.classList.add('hidden');
+        horarioModal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    openHorarioModal?.addEventListener('click', showHorarioModal);
+    closeHorarioModal?.addEventListener('click', hideHorarioModal);
+    cancelHorarioBtn?.addEventListener('click', hideHorarioModal);
+    horarioModalOverlay?.addEventListener('click', hideHorarioModal);
+    
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            hideHorarioModal();
+            cerrarModalEditarHorario();
+        }
+    });
+
+    // EDIT HORARIO LOGIC
+    function abrirModalEditarHorario(id, nombre, entrada, salida, tolerancia, lunes, martes, miercoles, jueves, viernes, sabado, domingo) {
+        document.getElementById('edit-horario-id').value = id;
+        document.getElementById('edit-horario-nombre').value = nombre;
+        document.getElementById('edit-horario-entrada').value = entrada;
+        document.getElementById('edit-horario-salida').value = salida;
+        document.getElementById('edit-horario-tolerancia').value = tolerancia;
+        
+        document.getElementById('edit-horario-lunes').checked = lunes;
+        document.getElementById('edit-horario-martes').checked = martes;
+        document.getElementById('edit-horario-miercoles').checked = miercoles;
+        document.getElementById('edit-horario-jueves').checked = jueves;
+        document.getElementById('edit-horario-viernes').checked = viernes;
+        document.getElementById('edit-horario-sabado').checked = sabado;
+        document.getElementById('edit-horario-domingo').checked = domingo;
+
+        document.getElementById('edit-horario-status').innerHTML = '';
+
+        const editModal = document.getElementById('horario-edit-modal');
+        editModal.classList.remove('hidden');
+        editModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function cerrarModalEditarHorario() {
+        const editModal = document.getElementById('horario-edit-modal');
+        editModal.classList.add('hidden');
+        editModal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function guardarCambiosHorario() {
+        const id = document.getElementById('edit-horario-id').value;
+        const nombre = document.getElementById('edit-horario-nombre').value;
+        const hora_entrada = document.getElementById('edit-horario-entrada').value;
+        const hora_salida = document.getElementById('edit-horario-salida').value;
+        const tolerancia_minutos = document.getElementById('edit-horario-tolerancia').value;
+
+        const lunes = document.getElementById('edit-horario-lunes').checked;
+        const martes = document.getElementById('edit-horario-martes').checked;
+        const miercoles = document.getElementById('edit-horario-miercoles').checked;
+        const jueves = document.getElementById('edit-horario-jueves').checked;
+        const viernes = document.getElementById('edit-horario-viernes').checked;
+        const sabado = document.getElementById('edit-horario-sabado').checked;
+        const domingo = document.getElementById('edit-horario-domingo').checked;
+
+        const statusDiv = document.getElementById('edit-horario-status');
+        statusDiv.innerHTML = '<p class="text-amber-400 animate-pulse">⏳ Guardando cambios...</p>';
+
+        fetch(`/api/horario/${id}/actualizar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                hora_entrada: hora_entrada,
+                hora_salida: hora_salida,
+                tolerancia_minutos: tolerancia_minutos,
+                lunes: lunes,
+                martes: martes,
+                miercoles: miercoles,
+                jueves: jueves,
+                viernes: viernes,
+                sabado: sabado,
+                domingo: domingo
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                statusDiv.innerHTML = '<p class="text-emerald-400">✅ Horario actualizado con éxito</p>';
+                setTimeout(() => {
+                    cerrarModalEditarHorario();
+                    location.reload();
+                }, 1500);
+            } else {
+                statusDiv.innerHTML = `<p class="text-rose-400">❌ Error: ${data.message}</p>`;
+            }
+        })
+        .catch(e => {
+            statusDiv.innerHTML = `<p class="text-rose-400">❌ Error de red: ${e.message}</p>`;
+        });
+    }
+</script>
+{% endblock %}
