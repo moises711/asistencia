@@ -61,19 +61,21 @@ class EmpleadoCreationForm(UserCreationForm):
             "supervisor",
             "horario",
             "area",
+            "rol",
             "permite_remoto",
         ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["supervisor"].queryset = CustomUser.objects.filter(
-            rol__in=[CustomUser.ROL_ADMIN, CustomUser.ROL_SUPERVISOR],
+            rol__in=[CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR],
             is_active=True,
         )
+        self.fields["rol"].initial = CustomUser.ROL_EMPLEADO
 
     def save(self, commit=True):
         usuario = super().save(commit=False)
-        usuario.rol = CustomUser.ROL_EMPLEADO
+        usuario.rol = self.cleaned_data.get("rol", CustomUser.ROL_EMPLEADO)
         if commit:
             usuario.save()
             self.save_m2m()

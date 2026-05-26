@@ -28,7 +28,7 @@ class Command(BaseCommand):
                 continue
             if RegistroAsistencia.objects.filter(empleado=empleado, fecha=hoy).exists():
                 continue
-            RegistroAsistencia.objects.create(
+            registro_falta = RegistroAsistencia.objects.create(
                 empleado=empleado,
                 fecha=hoy,
                 estado=RegistroAsistencia.ESTADO_FALTA,
@@ -39,6 +39,7 @@ class Command(BaseCommand):
                     fecha_falta=hoy,
                     defaults={
                         'horas_a_recuperar': empleado.horario.duracion_jornada(),
+                        'registro_falta': registro_falta,
                     }
                 )
             faltas_creadas += 1

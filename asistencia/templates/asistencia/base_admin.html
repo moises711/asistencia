@@ -13,10 +13,17 @@
         <div>
             <div class="text-[11px] uppercase tracking-[0.28em] text-zinc-400">Asistencia</div>
             <div class="mt-4 grid gap-3">
+                {% if request.user.rol == 'admin' %}
                 <a href="{% url 'admin_dashboard' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if request.path == '/admin-dashboard/' %}bg-white/10 text-white border-white/20{% endif %}">Dashboard</a>
                 <a href="{% url 'panel_control' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/panel-control/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Personal</a>
                 <a href="{% url 'horarios' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/horarios/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Horarios</a>
                 <a href="{% url 'areas' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/areas/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Areas</a>
+                {% elif request.user.rol == 'rrhh' %}
+                <a href="{% url 'dashboard' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if request.path == '/dashboard/' %}bg-white/10 text-white border-white/20{% endif %}">Validar asistencia</a>
+                <a href="{% url 'panel_control' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/panel-control/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Personal</a>
+                {% else %}
+                <a href="{% url 'panel_control' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/panel-control/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Personal</a>
+                {% endif %}
             </div>
         </div>
         <div>

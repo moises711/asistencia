@@ -38,6 +38,8 @@ from .utils import calcular_horas_netas, obtener_ip_cliente, validar_ubicacion_g
 def obtener_redirect_por_rol(usuario: CustomUser) -> str:
     if usuario.rol == CustomUser.ROL_ADMIN:
         return "admin_dashboard"
+    if usuario.rol == CustomUser.ROL_RRHH:
+        return "dashboard"
     if usuario.rol == CustomUser.ROL_SUPERVISOR:
         return "panel_control"
     return "dashboard"
@@ -138,13 +140,31 @@ class AdminRequiredMixin(UserPassesTestMixin):
         return super().handle_no_permission()
 
 
+class AdminOrRRHHRequiredMixin(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.rol in (
+            CustomUser.ROL_ADMIN,
+            CustomUser.ROL_RRHH,
+        )
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            return redirect(obtener_redirect_por_rol(self.request.user))
+        return super().handle_no_permission()
+
+
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = "asistencia/dashboard.html"
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.rol != CustomUser.ROL_EMPLEADO:
+        if request.user.rol not in [CustomUser.ROL_EMPLEADO, CustomUser.ROL_RRHH]:
             return redirect(obtener_redirect_por_rol(request.user))
         return super().dispatch(request, *args, **kwargs)
+
+    def get_template_names(self):
+        if self.request.user.rol == CustomUser.ROL_RRHH:
+            return ["asistencia/dashboard_rrhh.html"]
+        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -178,7 +198,10 @@ class PanelControlView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         hoy = timezone.localdate()
-        empleados = CustomUser.objects.filter(rol=CustomUser.ROL_EMPLEADO, is_active=True).select_related('area')
+        empleados = CustomUser.objects.filter(
+            rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_SUPERVISOR],
+            is_active=True,
+        ).select_related('area')
         asistencias_hoy = RegistroAsistencia.objects.filter(fecha=hoy)
         
         empleados_lista = []
@@ -308,6 +331,15 @@ def autorizar_ip_actual(request):
 class ReporteAsistenciasView(LoginRequiredMixin, TemplateView):
     template_name = "asistencia/reporte.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.rol not in [
+            CustomUser.ROL_ADMIN,
+            CustomUser.ROL_RRHH,
+            CustomUser.ROL_SUPERVISOR,
+        ]:
+            return redirect(obtener_redirect_por_rol(request.user))
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         registros = RegistroAsistencia.objects.all()
@@ -345,7 +377,7 @@ class JustificacionesPendientesView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if self.request.user.rol == CustomUser.ROL_ADMIN:
+        if self.request.user.rol in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
             context["justificaciones"] = Justificacion.objects.filter(aprobada=False)
         else:
             context["justificaciones"] = Justificacion.objects.filter(
@@ -360,7 +392,7 @@ def procesar_justificacion(request, justificacion_id: int):
     accion = request.POST.get("accion")
     justificacion = get_object_or_404(Justificacion, id=justificacion_id)
     
-    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_SUPERVISOR]:
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_SUPERVISOR, CustomUser.ROL_RRHH]:
         return JsonResponse({"status": "error", "message": "No autorizado"}, status=403)
         
     if accion == "aprobar":
@@ -375,7 +407,32 @@ def procesar_justificacion(request, justificacion_id: int):
     return JsonResponse({"status": "error", "message": "Acción inválida"}, status=400)
 
 
-class EmpleadosView(LoginRequiredMixin, AdminRequiredMixin, FormView):
+@login_required
+@require_POST
+def eliminar_empleado(request, empleado_id: int):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
+        return JsonResponse({'success': False, 'message': 'No autorizado'}, status=403)
+
+    empleado = get_object_or_404(CustomUser, pk=empleado_id)
+
+    if empleado == request.user:
+        return JsonResponse({'success': False, 'message': 'No puedes eliminar tu propio usuario.'}, status=403)
+
+    if empleado.rol == CustomUser.ROL_ADMIN:
+        return JsonResponse({'success': False, 'message': 'No se puede eliminar un administrador.'}, status=403)
+
+    if request.user.rol == CustomUser.ROL_RRHH and empleado.rol != CustomUser.ROL_EMPLEADO:
+        return JsonResponse({'success': False, 'message': 'RRHH solo puede eliminar empleados.'}, status=403)
+
+    empleado.delete()
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': 'Empleado eliminado correctamente'})
+
+    return redirect('panel_control')
+
+
+class EmpleadosView(LoginRequiredMixin, AdminOrRRHHRequiredMixin, FormView):
     template_name = "asistencia/empleados.html"
     form_class = EmpleadoCreationForm
     success_url = "/empleados/"
@@ -422,7 +479,7 @@ class EmpleadosView(LoginRequiredMixin, AdminRequiredMixin, FormView):
         return context
 
 
-class ConfigIpView(LoginRequiredMixin, CreateView):
+class ConfigIpView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
     template_name = "asistencia/config_ip.html"
     form_class = IpOficinaAutorizadaForm
     success_url = "/config-ip/"
@@ -738,10 +795,10 @@ def marcar_evento(request, accion: str):
                 recuperacion.estado = RecuperacionDia.ESTADO_RECUPERADO
                 recuperacion.save(update_fields=["fecha_recuperacion", "horas_recuperadas", "estado"])
     elif accion == "qr":
-        # Simulando lectura del código. En producción se recibiría en POST.
-        codigo_escaneado = request.POST.get("codigo")
-        if codigo_escaneado != "ASISTENCIA_DEMO":
-            return JsonResponse({"status": "error", "message": "Código QR inválido o expirado."}, status=400)
+        # Validar código QR del usuario
+        codigo_escaneado = request.POST.get("codigo", "").strip().upper()
+        if codigo_escaneado != usuario.codigo_qr:
+            return JsonResponse({"status": "error", "message": "Código QR inválido. El código no coincide con tu usuario."}, status=400)
             
         if registro.hora_entrada:
             return JsonResponse({"status": "error", "message": "Ya has marcado tu entrada hoy."}, status=400)
@@ -761,7 +818,140 @@ def marcar_evento(request, accion: str):
 
     registro.save()
     return JsonResponse({"status": "ok", "message": f"Acción '{accion}' registrada exitosamente", "accion": accion})
-class ActividadesEmpleadosView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+
+
+@login_required
+@require_POST
+def escanear_qr_empleado(request):
+    """
+    Endpoint para RRHH: escanear código QR de empleado y validar/registrar asistencia.
+    """
+    # Verificar que el usuario sea RRHH o Admin
+    if request.user.rol not in [CustomUser.ROL_RRHH, CustomUser.ROL_ADMIN]:
+        return JsonResponse({"status": "error", "message": "No tienes permiso para realizar esta acción"}, status=403)
+    
+    try:
+        datos = json.loads(request.body)
+        codigo_qr = datos.get("codigo_qr", "").strip().upper()
+        accion = datos.get("accion", "entrada")  # entrada, salida
+        
+        if not codigo_qr:
+            return JsonResponse({"status": "error", "message": "Código QR requerido"}, status=400)
+        
+        # Buscar empleado por código QR
+        empleado = CustomUser.objects.filter(codigo_qr=codigo_qr).first()
+        if not empleado:
+            return JsonResponse({"status": "error", "message": "Empleado no encontrado. Código QR inválido."}, status=404)
+        
+        # Crear o obtener registro de hoy
+        fecha = timezone.localdate()
+        ahora = timezone.now()
+        registro, creado = RegistroAsistencia.objects.get_or_create(
+            empleado=empleado,
+            fecha=fecha,
+            defaults={"ip_registro": obtener_ip_cliente(request)}
+        )
+        
+        if accion == "entrada":
+            if registro.hora_entrada:
+                return JsonResponse(
+                    {
+                        "status": "warning",
+                        "message": f"{empleado.get_full_name()} ya marcó entrada a las {registro.hora_entrada.strftime('%H:%M')}"
+                    },
+                    status=200
+                )
+            
+            registro.hora_entrada = ahora
+            registro.ip_registro = obtener_ip_cliente(request)
+            
+            # Determinar estado de entrada
+            if empleado.horario:
+                if not empleado.horario.es_laborable(fecha):
+                    if obtener_recuperacion_pendiente(empleado):
+                        registro.estado = RegistroAsistencia.ESTADO_RECUPERACION
+                    else:
+                        registro.estado = RegistroAsistencia.ESTADO_FALTA
+                elif ahora.time() > empleado.horario.hora_entrada_con_tolerancia():
+                    registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+                else:
+                    registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
+            else:
+                registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
+            
+            registro.save()
+            
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": f"✓ {empleado.get_full_name()} - Entrada marcada ({registro.get_estado_display()})",
+                    "empleado": {
+                        "nombre": empleado.get_full_name(),
+                        "dni": empleado.dni,
+                        "area": empleado.area.nombre if empleado.area else "Sin área",
+                        "estado": registro.get_estado_display(),
+                        "hora_entrada": registro.hora_entrada.strftime("%H:%M") if registro.hora_entrada else None
+                    }
+                },
+                status=200
+            )
+        
+        elif accion == "salida":
+            if not registro.hora_entrada:
+                return JsonResponse(
+                    {"status": "error", "message": f"{empleado.get_full_name()} no ha marcado entrada hoy"},
+                    status=400
+                )
+            
+            if registro.hora_salida:
+                return JsonResponse(
+                    {
+                        "status": "warning",
+                        "message": f"{empleado.get_full_name()} ya marcó salida a las {registro.hora_salida.strftime('%H:%M')}"
+                    },
+                    status=200
+                )
+            
+            registro.hora_salida = ahora
+            
+            # Calcular horas netas
+            if registro.inicio_almuerzo and registro.fin_almuerzo:
+                registro.horas_netas_trabajadas = calcular_horas_netas(
+                    registro.hora_entrada,
+                    registro.hora_salida,
+                    registro.inicio_almuerzo,
+                    registro.fin_almuerzo,
+                )
+            else:
+                registro.horas_netas_trabajadas = registro.hora_salida - registro.hora_entrada
+            
+            registro.save()
+            
+            horas_trabajadas = formatear_duracion(registro.horas_netas_trabajadas)
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": f"✓ {empleado.get_full_name()} - Salida marcada ({horas_trabajadas}h)",
+                    "empleado": {
+                        "nombre": empleado.get_full_name(),
+                        "dni": empleado.dni,
+                        "area": empleado.area.nombre if empleado.area else "Sin área",
+                        "hora_entrada": registro.hora_entrada.strftime("%H:%M") if registro.hora_entrada else None,
+                        "hora_salida": registro.hora_salida.strftime("%H:%M") if registro.hora_salida else None,
+                        "horas_trabajadas": horas_trabajadas
+                    }
+                },
+                status=200
+            )
+        
+        else:
+            return JsonResponse({"status": "error", "message": "Acción no válida"}, status=400)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Formato JSON inválido"}, status=400)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": f"Error: {str(e)}"}, status=500)
+class ActividadesEmpleadosView(LoginRequiredMixin, AdminOrRRHHRequiredMixin, TemplateView):
     template_name = "asistencia/actividades_empleados.html"
     
     def get_context_data(self, **kwargs):
@@ -796,7 +986,7 @@ class ActividadesEmpleadosView(LoginRequiredMixin, AdminRequiredMixin, TemplateV
         })
         return context
 
-class AreasView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
+class AreasView(LoginRequiredMixin, AdminOrRRHHRequiredMixin, CreateView):
     template_name = "asistencia/areas.html"
     form_class = AreaForm
     success_url = "/areas/"
@@ -807,7 +997,7 @@ class AreasView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
         return context
 
 
-class HorariosView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
+class HorariosView(LoginRequiredMixin, AdminOrRRHHRequiredMixin, CreateView):
     template_name = "asistencia/horarios.html"
     form_class = HorarioForm
     success_url = "/horarios/"
@@ -828,12 +1018,13 @@ class HorariosView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
 @login_required
 @require_POST
 def crear_ausencia_programada(request):
-    if request.user.rol != CustomUser.ROL_ADMIN:
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
         return HttpResponse("No autorizado", status=403)
 
     form = AusenciaProgramadaForm(request.POST)
     if form.is_valid():
         permiso = form.save(commit=False)
+        permiso.creada_por = request.user
         permiso.save()
     return redirect("horarios")
 
@@ -841,7 +1032,7 @@ def crear_ausencia_programada(request):
 @login_required
 @require_POST
 def procesar_ausencia(request, ausencia_id: int):
-    if request.user.rol != CustomUser.ROL_ADMIN:
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
         return HttpResponse("No autorizado", status=403)
 
     ausencia = get_object_or_404(AusenciaProgramada, pk=ausencia_id)
@@ -870,7 +1061,7 @@ def procesar_ausencia(request, ausencia_id: int):
 @login_required
 @require_POST
 def actualizar_empleado_api(request, empleado_id: int):
-    if request.user.rol not in (CustomUser.ROL_ADMIN, CustomUser.ROL_SUPERVISOR) and not request.user.is_staff:
+    if request.user.rol not in (CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR) and not request.user.is_staff:
         return JsonResponse({
             'success': False,
             'message': 'Permiso denegado'
@@ -946,11 +1137,16 @@ def actualizar_empleado_api(request, empleado_id: int):
         # Actualizar rol
         if 'rol' in datos:
             rol = str(datos.get('rol', '')).strip().lower()
-            if rol not in {CustomUser.ROL_ADMIN, CustomUser.ROL_SUPERVISOR, CustomUser.ROL_EMPLEADO}:
+            if rol not in {CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR, CustomUser.ROL_EMPLEADO}:
                 return JsonResponse({
                     'success': False,
                     'message': 'Rol inválido'
                 }, status=400)
+            if request.user.rol == CustomUser.ROL_RRHH and rol == CustomUser.ROL_ADMIN:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'RRHH no puede asignar rol administrador'
+                }, status=403)
             empleado.rol = rol
             updated_fields.append('rol')
         
@@ -998,8 +1194,8 @@ def exportar_reporte_excel(request):
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
 
-    # Verificar que el usuario sea Admin o Supervisor
-    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_SUPERVISOR]:
+    # Verificar que el usuario sea Admin, RRHH o Supervisor
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_SUPERVISOR, CustomUser.ROL_RRHH]:
         return HttpResponse("No autorizado", status=403)
 
     # Obtener filtros de la URL (GET)
@@ -1169,7 +1365,7 @@ def crear_feriado(request):
     """
     Registra un nuevo día feriado.
     """
-    if request.user.rol != CustomUser.ROL_ADMIN:
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
         return HttpResponse("No autorizado", status=403)
         
     form = DiaFeriadoForm(request.POST)
@@ -1184,7 +1380,7 @@ def eliminar_feriado(request, feriado_id: int):
     """
     Elimina un día feriado existente.
     """
-    if request.user.rol != CustomUser.ROL_ADMIN:
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
         return HttpResponse("No autorizado", status=403)
         
     feriado = get_object_or_404(DiaFeriado, id=feriado_id)
@@ -1198,7 +1394,7 @@ def actualizar_horario_api(request, horario_id: int):
     """
     Endpoint de API para actualizar un horario.
     """
-    if request.user.rol != CustomUser.ROL_ADMIN:
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
         return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
         
     try:
@@ -1244,7 +1440,7 @@ def actualizar_area_api(request, area_id: int):
     """
     Endpoint de API para actualizar un área.
     """
-    if request.user.rol != CustomUser.ROL_ADMIN:
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
         return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
         
     try:

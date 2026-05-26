@@ -22,9 +22,9 @@
             <div class="flex items-center gap-3">
                 <span class="text-sm font-semibold text-zinc-300">Filtrar por Rol:</span>
                 <div class="flex bg-white/5 border border-white/10 rounded-lg p-1">
-                    <button class="px-4 py-1.5 text-sm font-semibold bg-white/10 text-zinc-200 rounded hover:bg-white/20 transition-colors">Todos</button>
-                    <button class="px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Empleados</button>
-                    <button class="px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Practicantes</button>
+                    <button type="button" data-filter="all" class="filter-btn px-4 py-1.5 text-sm font-semibold bg-white/10 text-zinc-200 rounded hover:bg-white/20 transition-colors">Todos</button>
+                    <button type="button" data-filter="empleado" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Empleados</button>
+                    <button type="button" data-filter="supervisor" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Practicantes</button>
                 </div>
             </div>
             
@@ -34,7 +34,7 @@
                     Filtros Avanzados
                 </button>
                 <div class="w-px h-4 bg-white/10"></div>
-                <button class="flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
+                <button id="btn-export-pdf" type="button" class="flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                     Exportar
                 </button>
@@ -56,9 +56,9 @@
                         <th class="px-4 pb-3">Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="personal-rows">
                     {% for empleado in empleados %}
-                    <tr class="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
+                    <tr class="border-t border-white/5 hover:bg-white/[0.02] transition-colors" data-rol="{{ empleado.rol }}">
                         <td class="px-4 py-4 flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold uppercase">
                                 {% if empleado.first_name %}
@@ -102,10 +102,18 @@
                             {% endif %}
                         </td>
                         <td class="px-4 py-4">
+                            <div class="flex items-center gap-3">
                             <button onclick="abrirModalPersonal('editar', {{ empleado.id }}, '{{ empleado.first_name|escapejs }}', '{{ empleado.last_name|escapejs }}', '{{ empleado.username|escapejs }}', '{{ empleado.email|escapejs }}', '{% if empleado.area %}{{ empleado.area.id }}{% else %}{% endif %}', '{% if empleado.horario %}{{ empleado.horario.id }}{% else %}{% endif %}', '{{ empleado.rol|escapejs }}', '{{ empleado.dni|escapejs }}', {% if empleado.permite_remoto %}true{% else %}false{% endif %})" 
                                    class="text-indigo-400 hover:text-indigo-300 transition font-medium text-sm">
                                   Editar
                             </button>
+                            {% if request.user.id != empleado.id and empleado.rol != 'admin' %}
+                            <form action="{% url 'eliminar_empleado' empleado.id %}" method="post" onsubmit="return confirm('¿Eliminar a {{ empleado.get_full_name|default:empleado.username }}?');" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" class="text-rose-400 hover:text-rose-300 transition font-medium text-sm">Eliminar</button>
+                            </form>
+                            {% endif %}
+                        </div>
                         </td>
                     </tr>
                     {% empty %}
@@ -183,6 +191,7 @@
                         <option value="empleado">Empleado</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="admin">Administrador</option>
+                        <option value="rrhh">RRHH</option>
                     </select>
                 </div>
             </div>
@@ -243,8 +252,13 @@
         background-color: #09090b !important;
         color: #f4f4f5 !important;
     }
+    .filter-btn.active {
+        background-color: rgba(255,255,255,0.15) !important;
+        color: #ffffff !important;
+    }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
     function setValorCampo(form, nombre, valor) {
         const campo = form.querySelector(`[name="${nombre}"]`);
@@ -347,18 +361,7 @@
         const feedback = document.getElementById('modal-status-feedback');
         const btnSubmit = document.getElementById('btn-submit-modal');
 
-        if (form.dataset.modo === 'crear') {
-            feedback.classList.remove('hidden');
-            feedback.className = 'text-center text-xs py-2 text-amber-300';
-            feedback.textContent = 'Para crear personal usa la pantalla Empleados (admin).';
-            return;
-        }
-
-        const empleadoId = document.getElementById('edit-empleado-id').value;
-        if (!empleadoId) {
-            return;
-        }
-
+        const mode = form.dataset.modo;
         const email = form.querySelector('[name="email"]')?.value?.trim();
         if (!email) {
             feedback.classList.remove('hidden');
@@ -367,47 +370,65 @@
             return;
         }
 
-        btnSubmit.disabled = true;
-        feedback.classList.remove('hidden');
-        feedback.className = 'text-center text-xs py-2 text-amber-300 animate-pulse';
-        feedback.textContent = 'Guardando cambios...';
-
         const csrf = obtenerCsrfToken();
         if (!csrf) {
+            feedback.classList.remove('hidden');
             feedback.className = 'text-center text-xs py-2 text-rose-300';
             feedback.textContent = 'Sesión inválida. Vuelve a iniciar sesión.';
             if (window.showToast) window.showToast('Sesión inválida', 'error');
-            btnSubmit.disabled = false;
             return;
         }
 
+        btnSubmit.disabled = true;
+        feedback.classList.remove('hidden');
+        feedback.className = 'text-center text-xs py-2 text-amber-300 animate-pulse';
+        feedback.textContent = mode === 'crear' ? 'Creando empleado...' : 'Guardando cambios...';
+
         const areaVal = form.querySelector('[name="area"]')?.value;
         const horarioVal = form.querySelector('[name="horario"]')?.value;
+        const payload = {
+            first_name: form.querySelector('[name="first_name"]')?.value?.trim(),
+            last_name: form.querySelector('[name="last_name"]')?.value?.trim(),
+            username: form.querySelector('[name="username"]')?.value?.trim(),
+            email: email,
+            dni: form.querySelector('[name="dni"]')?.value?.trim(),
+            area: areaVal ? parseInt(areaVal, 10) : '',
+            horario: horarioVal ? parseInt(horarioVal, 10) : '',
+            rol: document.getElementById('id_rol_custom').value,
+            permite_remoto: form.querySelector('[name="permite_remoto"]')?.checked || false,
+        };
+
+        if (mode === 'crear') {
+            payload.password1 = form.querySelector('[name="password1"]')?.value || '';
+            payload.password2 = form.querySelector('[name="password2"]')?.value || '';
+        }
+
+        const url = mode === 'crear' ? '/empleados/' : `/api/empleado/${document.getElementById('edit-empleado-id').value}/actualizar/`;
+        const init = {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        };
+
+        if (mode === 'crear') {
+            const formData = new FormData(form);
+            formData.set('rol', document.getElementById('id_rol_custom').value);
+            init.body = formData;
+        } else {
+            init.headers['Content-Type'] = 'application/json';
+            init.body = JSON.stringify(payload);
+        }
+
         try {
-            const res = await fetch(`/api/empleado/${empleadoId}/actualizar/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrf,
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    first_name: form.querySelector('[name="first_name"]')?.value?.trim(),
-                    last_name: form.querySelector('[name="last_name"]')?.value?.trim(),
-                    username: form.querySelector('[name="username"]')?.value?.trim(),
-                    email: email,
-                    dni: form.querySelector('[name="dni"]')?.value?.trim(),
-                    area: areaVal ? parseInt(areaVal, 10) : null,
-                    horario: horarioVal ? parseInt(horarioVal, 10) : null,
-                    rol: document.getElementById('id_rol_custom').value,
-                    permite_remoto: form.querySelector('[name="permite_remoto"]')?.checked || false,
-                }),
-            });
+            const res = await fetch(url, init);
             const data = await leerRespuestaJson(res);
             if (res.ok && data.success) {
                 feedback.className = 'text-center text-xs py-2 text-emerald-300';
-                feedback.textContent = data.message || 'Cambios guardados';
-                if (window.showToast) window.showToast(data.message || 'Cambios guardados', 'success');
+                feedback.textContent = data.message || (mode === 'crear' ? 'Empleado creado' : 'Cambios guardados');
+                if (window.showToast) window.showToast(data.message || (mode === 'crear' ? 'Empleado creado' : 'Cambios guardados'), 'success');
                 setTimeout(() => {
                     hideUsuarioModal();
                     location.reload();
@@ -426,5 +447,87 @@
             btnSubmit.disabled = false;
         }
     }
+
+    function actualizarFiltrosPersonal(filtro) {
+        const filas = document.querySelectorAll('#personal-rows tr[data-rol]');
+        filas.forEach((fila) => {
+            const rol = fila.dataset.rol;
+            if (filtro === 'all') {
+                fila.hidden = false;
+            } else if (filtro === 'empleado') {
+                fila.hidden = rol !== 'empleado';
+            } else if (filtro === 'supervisor') {
+                fila.hidden = rol !== 'supervisor';
+            }
+        });
+    }
+
+    function actualizarBotonesFiltro(botonActivo) {
+        document.querySelectorAll('.filter-btn').forEach((btn) => {
+            btn.classList.toggle('active', btn === botonActivo);
+        });
+    }
+
+    function generarPdfEmpleados() {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            if (window.showToast) window.showToast('No se pudo cargar la librería PDF', 'error');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        const title = 'Listado de Personal';
+        const columns = ['Personal', 'ID', 'Cargo', 'Departamento', 'Horario', 'Estado'];
+        const rows = [];
+
+        document.querySelectorAll('#personal-rows tr[data-rol]:not([hidden])').forEach((fila) => {
+            const celdas = [...fila.querySelectorAll('td')];
+            const texto = celdas.slice(0, 6).map((celda) => celda.textContent.trim().replace(/\s+/g, ' '));
+            rows.push(texto);
+        });
+
+        let y = 40;
+        doc.setFontSize(16);
+        doc.text(title, 40, y);
+        y += 30;
+        doc.setFontSize(10);
+        const anchoColumna = [140, 30, 80, 120, 80, 80];
+
+        doc.setFont(undefined, 'bold');
+        let x = 40;
+        columns.forEach((col, index) => {
+            doc.text(col, x, y);
+            x += anchoColumna[index];
+        });
+        doc.setFont(undefined, 'normal');
+        y += 18;
+
+        rows.forEach((row) => {
+            x = 40;
+            row.forEach((celda, index) => {
+                const lineas = doc.splitTextToSize(celda, anchoColumna[index] - 5);
+                doc.text(lineas, x, y);
+                x += anchoColumna[index];
+            });
+            y += 18;
+            if (y > 740) {
+                doc.addPage();
+                y = 40;
+            }
+        });
+
+        doc.save(`Personal_${new Date().toISOString().slice(0, 10)}.pdf`);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-filter]').forEach((boton) => {
+            boton.addEventListener('click', () => {
+                actualizarFiltrosPersonal(boton.dataset.filter);
+                actualizarBotonesFiltro(boton);
+            });
+        });
+        actualizarBotonesFiltro(document.querySelector('[data-filter="all"]'));
+        document.getElementById('btn-export-pdf')?.addEventListener('click', generarPdfEmpleados);
+    });
 </script>
 {% endblock %}

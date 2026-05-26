@@ -17,8 +17,12 @@ urlpatterns = [
     path("capturar-gps/", views.capturar_gps_admin, name="capturar_gps_admin"),
     path("guardar-gps/", views.guardar_gps_admin, name="guardar_gps_admin"),
     
+    # Escaneo QR para RRHH
+    path("api/escanear-qr/", views.escanear_qr_empleado, name="escanear_qr_empleado"),
+    
     # Vistas de Admin
     path("empleados/", views.EmpleadosView.as_view(), name="empleados"),
+    path("empleados/<int:empleado_id>/eliminar/", views.eliminar_empleado, name="eliminar_empleado"),
     path("config-ip/", views.ConfigIpView.as_view(), name="config_ip"),
     path("autorizar-ip/", views.autorizar_ip_actual, name="autorizar_ip"),
     

@@ -1,0 +1,468 @@
+{% extends "asistencia/base_admin.html" %}
+
+{% block title %}Validar Asistencia{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <div class="glass rounded-2xl p-6 md:p-8 fade-in">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+            <div class="space-y-2">
+                <div class="text-sm text-zinc-400 uppercase tracking-[0.2em]">Validar asistencia</div>
+                <div id="reloj" class="text-3xl md:text-4xl font-semibold">--:--:--</div>
+                <div class="text-sm text-zinc-400">Actualizacion en tiempo real</div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <div class="px-4 py-3 rounded-xl border border-white/10 bg-white/5 flex items-center gap-3">
+                    <div
+                        class="w-2 h-2 rounded-full {% if ip_valida %}bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]{% else %}bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]{% endif %}">
+                    </div>
+                    <div>
+                        <div class="text-sm text-zinc-200">Red oficina</div>
+                        <div class="text-xs text-zinc-400">{% if ip_valida %}Autorizado{% else %}No conectado{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-ghost px-4 py-3 rounded-xl flex items-center gap-2 group transition-all"
+                    onclick="solicitarGPS()">
+                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-indigo-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <div class="text-left">
+                        <div class="text-sm text-zinc-200">Ubicacion GPS</div>
+                        <div class="text-xs text-zinc-400" id="gps-status">Pendiente</div>
+                    </div>
+                </button>
+
+                <button class="btn-neo px-4 py-3 rounded-xl flex items-center gap-2" onclick="abrirEscanerQR()">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z">
+                        </path>
+                    </svg>
+                    <div class="text-left">
+                        <div class="text-sm">Escanear QR</div>
+                        <div class="text-xs opacity-80">En recepcion</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
+        <div class="glass rounded-2xl p-6 space-y-4 fade-in">
+            <div class="flex items-center justify-between">
+                <div class="font-semibold text-lg">Validación de Asistencia por QR</div>
+                <span class="text-xs text-zinc-400">Escaneo en recepción</span>
+            </div>
+            <div class="space-y-4">
+                <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm">
+                    <div class="font-semibold text-emerald-200">Escanea QR del empleado</div>
+                    <div class="text-zinc-300 mt-1">
+                        Lee el código QR del carnet de empleado para validar entrada/salida
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+                        Código QR del Empleado
+                    </label>
+                    <input 
+                        id="qr-input" 
+                        type="text" 
+                        class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 placeholder-zinc-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                        placeholder="Escanea aquí o ingresa el código QR..."
+                        autocomplete="off"
+                        autofocus
+                    />
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-3">
+                    <button id="btn-entrada-qr" class="btn-neo py-3 rounded-xl" onclick="validarAsistenciaQR('entrada')">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11l3 3L20 5m-9 11a9 9 0 110-18 9 9 0 0110 18z"></path>
+                        </svg>
+                        Validar Entrada
+                    </button>
+                    <button id="btn-salida-qr" class="btn-neo py-3 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 border-none" onclick="validarAsistenciaQR('salida')">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        Validar Salida
+                    </button>
+                </div>
+
+                <div id="resultado-qr" class="hidden rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm animate-pulse"></div>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6 space-y-4 fade-in">
+            <div class="font-semibold text-lg">Resumen del dia</div>
+            {% if horario %}
+            <div class="text-xs text-zinc-400 border-b border-white/10 pb-3 mb-1">
+                Turno: {{ horario.hora_entrada|time:"H:i" }} – {{ horario.hora_salida|time:"H:i" }}
+                (tolerancia {{ horario.tolerancia_minutos }} min)
+            </div>
+            {% endif %}
+            {% if registro_hoy %}
+            <div class="grid grid-cols-1 gap-3 text-sm">
+                <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span class="text-zinc-400">Entrada</span>
+                    <span>{{ registro_hoy.hora_entrada|default:"-" }}</span>
+                </div>
+                <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span class="text-zinc-400">Salida</span>
+                    <span>{{ registro_hoy.hora_salida|default:"-" }}</span>
+                </div>
+                <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span class="text-zinc-400">Estado</span>
+                    <span>{{ registro_hoy.get_estado_display }}</span>
+                </div>
+                {% if registro_hoy.actividad_diaria %}
+                <div class="pt-2">
+                    <span class="block text-zinc-400 mb-1">Actividad reportada:</span>
+                    <span class="text-xs text-zinc-300 italic">"{{ registro_hoy.actividad_diaria }}"</span>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="text-sm text-zinc-400">Sin registros hoy.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="glass rounded-2xl p-6 fade-in">
+        <div class="flex items-center justify-between mb-4">
+            <div class="font-semibold text-lg">Ultimos 5 registros</div>
+            <span class="text-xs text-zinc-400">Historico inmediato</span>
+        </div>
+        <ul class="text-sm space-y-2">
+            {% for registro in ultimos_registros %}
+            <li class="flex items-center justify-between border-b border-white/10 pb-2">
+                <span class="text-zinc-300">{{ registro.fecha }}</span>
+                <span class="text-zinc-400">{{ registro.get_estado_display }}</span>
+            </li>
+            {% empty %}
+            <li class="text-zinc-400">No hay registros.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<script>
+    const REQUIERE_GPS = {{ requiere_gps|yesno:"true,false" }};
+    let gpsValido = !REQUIERE_GPS;
+
+    function actualizarEstadoBotonEntrada() {
+        const btn = document.getElementById('btn-entrada');
+        if (!btn || btn.classList.contains('hidden')) return;
+        if (REQUIERE_GPS && !gpsValido) {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.title = 'Comparte tu ubicación GPS primero';
+        } else {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.title = '';
+        }
+    }
+
+    function actualizarReloj() {
+        const ahora = new Date();
+        const texto = ahora.toLocaleTimeString();
+        document.getElementById("reloj").textContent = texto;
+    }
+
+    actualizarReloj();
+    setInterval(actualizarReloj, 1000);
+
+    document.querySelectorAll("[data-accion]").forEach((boton) => {
+        boton.addEventListener("click", async () => {
+            const accion = boton.dataset.accion;
+
+            if ((accion === 'entrada' || accion === 'qr') && REQUIERE_GPS && !gpsValido) {
+                window.showToast('Primero comparte tu ubicación GPS', 'error');
+                solicitarGPS();
+                return;
+            }
+
+            if (accion === 'salida') {
+                const actividad = document.getElementById('actividad-diaria').value.trim();
+                if (!actividad) {
+                    window.showToast('Debes describir tus actividades para marcar salida', 'error');
+                    return;
+                }
+            }
+
+            const textOriginal = boton.textContent;
+            boton.textContent = 'Procesando...';
+            boton.disabled = true;
+            boton.style.opacity = '0.7';
+
+            try {
+                const formData = new FormData();
+                if (accion === 'salida') {
+                    const actividad = document.getElementById('actividad-diaria').value.trim();
+                    formData.append('actividad', actividad);
+                }
+
+                if (coordenadasGPS.latitud && coordenadasGPS.longitud) {
+                    formData.append('latitud', coordenadasGPS.latitud);
+                    formData.append('longitud', coordenadasGPS.longitud);
+                    formData.append('precisión', coordenadasGPS.precisión);
+                }
+
+                const respuesta = await fetch(`/marcar/${accion}/`, {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                });
+                const data = await respuesta.json();
+
+                if (respuesta.ok) {
+                    window.showToast(data.message || `Registro exitoso: ${accion}`, 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    window.showToast(data.message || 'Error al procesar la solicitud', 'error');
+                    boton.textContent = textOriginal;
+                    boton.disabled = false;
+                    boton.style.opacity = '1';
+                }
+            } catch (error) {
+                window.showToast('Error de conexión', 'error');
+                boton.textContent = textOriginal;
+                boton.disabled = false;
+                boton.style.opacity = '1';
+            }
+        });
+    });
+
+    let coordenadasGPS = {
+        latitud: null,
+        longitud: null,
+        precisión: null
+    };
+
+    function solicitarGPS() {
+        const status = document.getElementById('gps-status');
+        status.textContent = 'Calculando...';
+        status.className = 'text-xs text-amber-400';
+
+        if (!navigator.geolocation) {
+            status.textContent = 'No soportado';
+            status.className = 'text-xs text-rose-400';
+            window.showToast('Geolocalización no soportada en tu navegador', 'error');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const precision = position.coords.accuracy;
+
+                coordenadasGPS.latitud = lat;
+                coordenadasGPS.longitud = lon;
+                coordenadasGPS.precisión = precision;
+
+                try {
+                    const respuesta = await fetch('/validar-gps/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            latitud: lat,
+                            longitud: lon,
+                            precisión: precision
+                        })
+                    });
+
+                    const datos = await respuesta.json();
+
+                    if (datos.valido) {
+                        gpsValido = true;
+                        actualizarEstadoBotonEntrada();
+                        status.textContent = `En la oficina (${datos.distancia}m)`;
+                        status.className = 'text-xs text-emerald-400';
+                        window.showToast(`Ubicación válida - ${datos.distancia}m de distancia`, 'success');
+                    } else {
+                        gpsValido = false;
+                        actualizarEstadoBotonEntrada();
+                        status.textContent = `Fuera de rango (${datos.distancia}m)`;
+                        status.className = 'text-xs text-rose-400';
+                        window.showToast(`${datos.mensaje}`, 'error');
+                        coordenadasGPS = { latitud: null, longitud: null, precisión: null };
+                    }
+                } catch (error) {
+                    console.error('Error validando GPS:', error);
+                    status.textContent = 'Error de validación';
+                    status.className = 'text-xs text-rose-400';
+                    window.showToast('Error al validar la ubicación', 'error');
+                    coordenadasGPS = { latitud: null, longitud: null, precisión: null };
+                }
+            },
+            (error) => {
+                gpsValido = false;
+                actualizarEstadoBotonEntrada();
+                status.textContent = 'Error de GPS';
+                status.className = 'text-xs text-rose-400';
+                let mensaje = 'No se pudo obtener la ubicación';
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        mensaje = 'Permiso de ubicación denegado. Habilita GPS en la configuración';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        mensaje = 'Información de ubicación no disponible';
+                        break;
+                    case error.TIMEOUT:
+                        mensaje = 'Tiempo de espera agotado';
+                        break;
+                }
+                window.showToast(mensaje, 'error');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
+
+    async function abrirEscanerQR() {
+        if (REQUIERE_GPS && !gpsValido) {
+            window.showToast('Primero comparte tu ubicación GPS', 'error');
+            solicitarGPS();
+            return;
+        }
+        window.showToast('Abriendo la cámara...', 'success');
+
+        setTimeout(async () => {
+            try {
+                const formData = new FormData();
+                formData.append('codigo', 'ASISTENCIA_DEMO');
+                if (coordenadasGPS.latitud && coordenadasGPS.longitud) {
+                    formData.append('latitud', coordenadasGPS.latitud);
+                    formData.append('longitud', coordenadasGPS.longitud);
+                    formData.append('precisión', coordenadasGPS.precisión);
+                }
+
+                const respuesta = await fetch(`/marcar/qr/`, {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                });
+
+                const data = await respuesta.json();
+
+                if (respuesta.ok) {
+                    window.showToast('QR Escaneado con éxito', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    window.showToast(data.message, 'error');
+                }
+            } catch (error) {
+                window.showToast('Error de conexión', 'error');
+            }
+        }, 1500);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        actualizarEstadoBotonEntrada();
+        const btnEntrada = document.getElementById('btn-entrada');
+        if (REQUIERE_GPS && btnEntrada && !btnEntrada.classList.contains('hidden')) {
+            solicitarGPS();
+        }
+    });
+
+    async function validarAsistenciaQR(accion) {
+        const qrInput = document.getElementById('qr-input');
+        const codigoQR = qrInput.value.trim().toUpperCase();
+        
+        if (!codigoQR) {
+            window.showToast('Ingresa o escanea un código QR', 'error');
+            qrInput.focus();
+            return;
+        }
+
+        const btnEntrada = document.getElementById('btn-entrada-qr');
+        const btnSalida = document.getElementById('btn-salida-qr');
+        const btnActivo = accion === 'entrada' ? btnEntrada : btnSalida;
+        const textOriginal = btnActivo.textContent;
+
+        btnEntrada.disabled = true;
+        btnSalida.disabled = true;
+        btnActivo.textContent = 'Procesando...';
+
+        try {
+            const response = await fetch('/api/escanear-qr/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    codigo_qr: codigoQR,
+                    accion: accion
+                })
+            });
+
+            const data = await response.json();
+            const resultadoDiv = document.getElementById('resultado-qr');
+
+            if (response.ok) {
+                resultadoDiv.className = 'rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200';
+                resultadoDiv.innerHTML = `
+                    <div class="font-semibold mb-2">${data.message}</div>
+                    ${data.empleado ? `
+                        <div class="text-xs space-y-1 text-emerald-300">
+                            <div><strong>Nombre:</strong> ${data.empleado.nombre}</div>
+                            <div><strong>DNI:</strong> ${data.empleado.dni}</div>
+                            <div><strong>Área:</strong> ${data.empleado.area}</div>
+                            ${data.empleado.hora_entrada ? `<div><strong>Entrada:</strong> ${data.empleado.hora_entrada}</div>` : ''}
+                            ${data.empleado.hora_salida ? `<div><strong>Salida:</strong> ${data.empleado.hora_salida}</div>` : ''}
+                            ${data.empleado.horas_trabajadas ? `<div><strong>Horas:</strong> ${data.empleado.horas_trabajadas}</div>` : ''}
+                        </div>
+                    ` : ''}
+                `;
+                window.showToast(data.message, 'success');
+            } else {
+                const cssClass = response.status === 404 
+                    ? 'rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200'
+                    : 'rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200';
+                resultadoDiv.className = cssClass;
+                resultadoDiv.textContent = data.message || 'Error al procesar el código QR';
+                window.showToast(data.message || 'Error', 'error');
+            }
+
+            resultadoDiv.classList.remove('hidden');
+            qrInput.value = '';
+            qrInput.focus();
+
+        } catch (error) {
+            console.error('Error:', error);
+            window.showToast('Error de conexión', 'error');
+        } finally {
+            btnEntrada.disabled = false;
+            btnSalida.disabled = false;
+            btnActivo.textContent = textOriginal;
+        }
+    }
+
+    // Permitir validar por Enter en el input
+    document.getElementById('qr-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            validarAsistenciaQR('entrada');
+        }
+    });
+
+</script>
+{% endblock %}

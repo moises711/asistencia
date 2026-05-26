@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import uuid
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -81,16 +82,18 @@ class Horario(models.Model):
 
 class CustomUser(AbstractUser):
     ROL_ADMIN = "admin"
+    ROL_RRHH = "rrhh"
     ROL_SUPERVISOR = "supervisor"
     ROL_EMPLEADO = "empleado"
 
     ROLES = (
-        (ROL_ADMIN, "Administrador (RRHH)"),
+        (ROL_ADMIN, "Administrador"),
+        (ROL_RRHH, "RRHH"),
         (ROL_SUPERVISOR, "Supervisor"),
         (ROL_EMPLEADO, "Empleado"),
     )
     
-    rol = models.CharField(max_length=20, choices=ROLES, default='empleado')
+    rol = models.CharField(max_length=20, choices=ROLES, default=ROL_EMPLEADO)
     dni = models.CharField(max_length=11, unique=True, verbose_name="DNI/CE")
     supervisor = models.ForeignKey(
         'self', 
@@ -115,6 +118,23 @@ class CustomUser(AbstractUser):
         verbose_name="Área de Práctica"
     )
     permite_remoto = models.BooleanField(default=False)
+    codigo_qr = models.CharField(
+        max_length=50, 
+        unique=True, 
+        editable=False,
+        null=True,
+        blank=True,
+        help_text="Código QR único del empleado para validar asistencia"
+    )
+
+    def save(self, *args, **kwargs):
+        # Generar código QR único si no existe
+        if not self.codigo_qr:
+            # Usar UUID acortado + últimos 4 dígitos del DNI
+            codigo_base = str(uuid.uuid4())[:8].upper()
+            dni_parte = self.dni[-4:] if len(self.dni) >= 4 else self.dni
+            self.codigo_qr = f"{codigo_base}-{dni_parte}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.get_full_name()} ({self.dni}) - {self.area.nombre if self.area else 'Sin Área'}"
@@ -198,6 +218,13 @@ class AusenciaProgramada(models.Model):
     motivo = models.CharField(max_length=255)
     estado = models.CharField(max_length=20, choices=ESTADOS_PERMISO, default=ESTADO_PENDIENTE)
     creada_en = models.DateTimeField(auto_now_add=True)
+    creada_por = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ausencias_creadas",
+    )
     procesada_por = models.ForeignKey(
         CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
         related_name="permisos_procesados"
@@ -241,6 +268,14 @@ class RecuperacionDia(models.Model):
 
     empleado = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="recuperaciones")
     fecha_falta = models.DateField(help_text="Día que faltó")
+    registro_falta = models.OneToOneField(
+        RegistroAsistencia,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recuperacion",
+        help_text="Falta original asociada a esta recuperación.",
+    )
     horas_a_recuperar = models.DurationField(help_text="Horas que debe recuperar")
     fecha_recuperacion = models.DateField(null=True, blank=True, help_text="Sábado en que recuperó")
     horas_recuperadas = models.DurationField(default=timedelta(0))

@@ -145,6 +145,107 @@ class ExportarExcelTests(TestCase):
         self.assertTrue(response['Content-Disposition'].startswith('attachment; filename="Reporte_Asistencias_'))
 
 
+class RRHHAndPermissionsTests(TestCase):
+    def setUp(self):
+        self.admin = CustomUser.objects.create_user(
+            username="admin_user",
+            password="test1234",
+            dni="87654321",
+            rol=CustomUser.ROL_ADMIN,
+        )
+        self.rrhh = CustomUser.objects.create_user(
+            username="rrhh_user",
+            password="test1234",
+            dni="98765432",
+            rol=CustomUser.ROL_RRHH,
+        )
+        self.horario = Horario.objects.create(
+            nombre="Turno mañana",
+            hora_entrada=time(8, 0),
+            hora_salida=time(17, 0),
+            tolerancia_minutos=15,
+        )
+        self.empleado = CustomUser.objects.create_user(
+            username="empleado_user",
+            password="test1234",
+            dni="12345678",
+            rol=CustomUser.ROL_EMPLEADO,
+            horario=self.horario,
+        )
+
+    def test_rrhh_accede_a_empleados_y_no_admin_dashboard(self):
+        self.client.login(username="rrhh_user", password="test1234")
+        response = self.client.get("/empleados/")
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/admin-dashboard/")
+        self.assertNotEqual(response.status_code, 200)
+        self.assertIn(response.status_code, {302, 403})
+
+        response = self.client.get("/dashboard/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_rrhh_no_puede_asignar_rol_admin(self):
+        self.client.login(username="rrhh_user", password="test1234")
+        response = self.client.post(
+            f"/api/empleado/{self.empleado.id}/actualizar/",
+            data='{"rol": "admin"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.rol, CustomUser.ROL_EMPLEADO)
+
+    def test_rrhh_puede_eliminar_empleado(self):
+        self.client.login(username="rrhh_user", password="test1234")
+        empleado2 = CustomUser.objects.create_user(
+            username="empleado2",
+            password="test1234",
+            dni="23456789",
+            rol=CustomUser.ROL_EMPLEADO,
+        )
+        response = self.client.post(f"/empleados/{empleado2.id}/eliminar/", follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CustomUser.objects.filter(pk=empleado2.id).exists())
+
+    def test_rrhh_no_puede_eliminar_admin(self):
+        self.client.login(username="rrhh_user", password="test1234")
+        response = self.client.post(f"/empleados/{self.admin.id}/eliminar/")
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(CustomUser.objects.filter(pk=self.admin.id).exists())
+
+    def test_rrhh_puede_exportar_excel(self):
+        self.client.login(username="rrhh_user", password="test1234")
+        response = self.client.get("/asistencias/reporte/excel/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_ausencia_aprobada_no_genera_falta_ni_recuperacion(self):
+        self.client.login(username="admin_user", password="test1234")
+        hoy = timezone.localdate()
+        permiso = AusenciaProgramada.objects.create(
+            empleado=self.empleado,
+            fecha_inicio=hoy,
+            fecha_fin=hoy,
+            motivo="Vacaciones",
+            estado=AusenciaProgramada.ESTADO_APROBADA,
+            creada_por=self.admin,
+            procesada_por=self.admin,
+        )
+        call_command('verificar_faltas')
+        self.assertFalse(RegistroAsistencia.objects.filter(empleado=self.empleado, fecha=hoy, estado=RegistroAsistencia.ESTADO_FALTA).exists())
+        self.assertFalse(RecuperacionDia.objects.filter(empleado=self.empleado, fecha_falta=hoy).exists())
+
+    def test_verificar_faltas_crea_recuperacion_con_registro_falta(self):
+        self.client.login(username="admin_user", password="test1234")
+        hoy = timezone.localdate()
+        call_command('verificar_faltas')
+        falta = RegistroAsistencia.objects.filter(empleado=self.empleado, fecha=hoy, estado=RegistroAsistencia.ESTADO_FALTA).first()
+        self.assertIsNotNone(falta)
+        recuperacion = RecuperacionDia.objects.filter(empleado=self.empleado, fecha_falta=hoy).first()
+        self.assertIsNotNone(recuperacion)
+        self.assertEqual(recuperacion.registro_falta, falta)
+
+
 class HolidayAndApiTests(TestCase):
     def setUp(self):
         self.admin = CustomUser.objects.create_user(
@@ -218,6 +319,17 @@ class HolidayAndApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.rol, CustomUser.ROL_EMPLEADO)
+
+    def test_actualizar_empleado_api_acepta_rol_rrhh(self):
+        self.client.login(username="admin_user", password="test1234")
+        response = self.client.post(
+            f"/api/empleado/{self.empleado.id}/actualizar/",
+            data='{"email": "empleado@demo.com", "rol": "rrhh"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.rol, CustomUser.ROL_RRHH)
 
     def test_actualizar_empleado_api_campos_completos(self):
         self.client.login(username="admin_user", password="test1234")
