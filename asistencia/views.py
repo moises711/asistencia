@@ -5,9 +5,10 @@ from datetime import timedelta
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.contrib.auth.password_validation import validate_password
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -130,6 +131,11 @@ class CustomLoginView(LoginView):
         return reverse(obtener_redirect_por_rol(self.request.user))
 
 
+class RoleAwarePasswordChangeView(PasswordChangeView):
+    def get_success_url(self):
+        return reverse(obtener_redirect_por_rol(self.request.user))
+
+
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.rol == CustomUser.ROL_ADMIN
@@ -157,7 +163,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = "asistencia/dashboard.html"
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.rol not in [CustomUser.ROL_EMPLEADO, CustomUser.ROL_RRHH]:
+        if request.user.rol not in [CustomUser.ROL_EMPLEADO, CustomUser.ROL_RRHH, CustomUser.ROL_PPHH]:
             return redirect(obtener_redirect_por_rol(request.user))
         return super().dispatch(request, *args, **kwargs)
 
@@ -421,8 +427,8 @@ def eliminar_empleado(request, empleado_id: int):
     if empleado.rol == CustomUser.ROL_ADMIN:
         return JsonResponse({'success': False, 'message': 'No se puede eliminar un administrador.'}, status=403)
 
-    if request.user.rol == CustomUser.ROL_RRHH and empleado.rol != CustomUser.ROL_EMPLEADO:
-        return JsonResponse({'success': False, 'message': 'RRHH solo puede eliminar empleados.'}, status=403)
+    if request.user.rol == CustomUser.ROL_RRHH and empleado.rol not in (CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH):
+        return JsonResponse({'success': False, 'message': 'RRHH solo puede eliminar empleados o practicantes.'}, status=403)
 
     empleado.delete()
 
@@ -470,7 +476,7 @@ class EmpleadosView(LoginRequiredMixin, AdminOrRRHHRequiredMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["empleados"] = CustomUser.objects.filter(rol=CustomUser.ROL_EMPLEADO).order_by(
+        context["empleados"] = CustomUser.objects.filter(rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH]).order_by(
             "last_name",
             "first_name",
             "username",
@@ -769,7 +775,7 @@ def marcar_evento(request, accion: str):
             return JsonResponse({"status": "error", "message": "Salida ya registrada."}, status=400)
         
         actividad = request.POST.get("actividad", "").strip()
-        if not actividad:
+        if usuario.rol not in (CustomUser.ROL_PPHH, CustomUser.ROL_RRHH) and not actividad:
             return JsonResponse({"status": "error", "message": "Debes ingresar tu resumen de actividades del día para poder marcar la salida."}, status=400)
 
         registro.hora_salida = ahora
@@ -779,7 +785,8 @@ def marcar_evento(request, accion: str):
             registro.longitud_salida = longitud
             registro.precisión_salida = request.POST.get('precisión', None)
         
-        registro.actividad_diaria = actividad
+        if actividad:
+            registro.actividad_diaria = actividad
         registro.horas_netas_trabajadas = calcular_horas_netas(
             registro.hora_entrada,
             registro.hora_salida,
@@ -982,7 +989,9 @@ class ActividadesEmpleadosView(LoginRequiredMixin, AdminOrRRHHRequiredMixin, Tem
             'registros': registros[:100],
             'total_actividades': total_actividades,
             'total_empleados_reportaron': total_empleados_reportaron,
-            'empleados': CustomUser.objects.filter(rol=CustomUser.ROL_EMPLEADO).order_by('last_name', 'first_name'),
+            'empleados': CustomUser.objects.filter(
+                rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH]
+            ).order_by('last_name', 'first_name'),
         })
         return context
 
@@ -1005,13 +1014,17 @@ class HorariosView(LoginRequiredMixin, AdminOrRRHHRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["horarios"] = Horario.objects.all().order_by("nombre")
+        context["total_horarios"] = context["horarios"].count()
         context["feriados"] = DiaFeriado.objects.all().order_by("fecha")
+        context["total_feriados"] = context["feriados"].count()
         context["feriado_form"] = DiaFeriadoForm()
         context["permiso_form"] = AusenciaProgramadaForm()
         context["ausencias"] = AusenciaProgramada.objects.select_related("empleado").order_by("-fecha_inicio")
+        context["permisos_pendientes"] = context["ausencias"].filter(estado=AusenciaProgramada.ESTADO_PENDIENTE).count()
         context["recuperaciones"] = RecuperacionDia.objects.select_related("empleado").filter(
             estado=RecuperacionDia.ESTADO_PENDIENTE
         ).order_by("fecha_falta")
+        context["recuperaciones_pendientes"] = context["recuperaciones"].count()
         return context
 
 
@@ -1133,6 +1146,23 @@ def actualizar_empleado_api(request, empleado_id: int):
             else:
                 empleado.horario = None
             updated_fields.append('horario')
+
+        password1 = str(datos.get('password1', '')).strip()
+        password2 = str(datos.get('password2', '')).strip()
+        if password1 or password2:
+            if not password1 or not password2:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Debes completar y confirmar la nueva contraseña'
+                }, status=400)
+            if password1 != password2:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Las contraseñas no coinciden'
+                }, status=400)
+            validate_password(password1, user=empleado)
+            empleado.set_password(password1)
+            updated_fields.append('password')
         
         # Actualizar rol
         if 'rol' in datos:

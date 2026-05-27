@@ -213,12 +213,15 @@
 
             <div id="seccion-passwords" class="grid md:grid-cols-2 gap-4 transition-all">
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Contraseña</label>
+                    <label id="label-password1" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Contraseña</label>
                     {{ empleado_form.password1 }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Confirmar contraseña</label>
+                    <label id="label-password2" class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Confirmar contraseña</label>
                     {{ empleado_form.password2 }}
+                </div>
+                <div id="password-help-modal" class="md:col-span-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-zinc-400 leading-5">
+                    En modo edición puedes dejar ambos campos vacíos para conservar la contraseña actual.
                 </div>
             </div>
 
@@ -279,18 +282,26 @@
 
     function configurarCamposPassword(modoEdicion) {
         const form = document.getElementById('form-personal');
+        const labelPassword1 = document.getElementById('label-password1');
+        const labelPassword2 = document.getElementById('label-password2');
+        const helpPassword = document.getElementById('password-help-modal');
         ['password1', 'password2'].forEach((nombre) => {
             const campo = form.querySelector(`[name="${nombre}"]`);
             if (!campo) return;
             if (modoEdicion) {
                 campo.required = false;
-                campo.disabled = true;
                 campo.value = '';
             } else {
                 campo.required = true;
-                campo.disabled = false;
             }
         });
+        if (labelPassword1 && labelPassword2) {
+            labelPassword1.textContent = modoEdicion ? 'Nueva contraseña' : 'Contraseña';
+            labelPassword2.textContent = modoEdicion ? 'Confirmar nueva contraseña' : 'Confirmar contraseña';
+        }
+        if (helpPassword) {
+            helpPassword.style.display = modoEdicion ? 'block' : 'none';
+        }
     }
 
     function obtenerCsrfToken() {
@@ -349,7 +360,7 @@
             if (remoto) {
                 remoto.checked = permite_remoto === true || permite_remoto === 'true';
             }
-            seccionPasswords.style.display = 'none';
+            seccionPasswords.style.display = 'grid';
             btnSubmit.textContent = "Guardar cambios";
             form.dataset.modo = 'editar';
             configurarCamposPassword(true);
@@ -409,6 +420,9 @@
         };
 
         if (mode === 'crear') {
+            payload.password1 = form.querySelector('[name="password1"]')?.value || '';
+            payload.password2 = form.querySelector('[name="password2"]')?.value || '';
+        } else {
             payload.password1 = form.querySelector('[name="password1"]')?.value || '';
             payload.password2 = form.querySelector('[name="password2"]')?.value || '';
         }

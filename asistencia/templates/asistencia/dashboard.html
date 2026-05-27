@@ -50,6 +50,16 @@
                         <div class="text-xs text-zinc-400">Ampliar código</div>
                     </div>
                 </button>
+
+                <a href="{% url 'password_change' %}" class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto">
+                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3V6a3 3 0 10-6 0v2c0 1.657 1.343 3 3 3zm-6 2a2 2 0 00-2 2v3h16v-3a2 2 0 00-2-2H6z"></path>
+                    </svg>
+                    <div class="text-left">
+                        <div class="text-sm text-zinc-200">Cambiar contraseña</div>
+                        <div class="text-xs text-zinc-400">Seguridad de acceso</div>
+                    </div>
+                </a>
             </div>
         </div>
     </div>
@@ -105,6 +115,7 @@
                 </div>
 
                 <!-- Textarea de actividades (aparece después de entrada) -->
+                {% if request.user.rol != 'pphh' %}
                 <div class="{% if not registro_hoy.hora_entrada or registro_hoy.hora_salida %}hidden{% endif %}" id="actividad-section">
                     <label class="block text-sm text-zinc-300 mb-2">Resumen de Actividades del Día (Obligatorio para salir)</label>
                     <textarea id="actividad-diaria"
@@ -112,6 +123,7 @@
                         rows="3"
                         placeholder="Ej. Terminé el diseño de banners, programé la vista de reportes, revisé feedback del cliente..."></textarea>
                 </div>
+                {% endif %}
 
                 {% if registro_hoy.hora_salida %}
                 <div class="text-center py-6 text-zinc-400">
@@ -182,6 +194,11 @@
 
 <script>
     const REQUIERE_GPS = {{ requiere_gps|yesno:"true,false" }};
+    {% if request.user.rol == 'pphh' %}
+    const REQUIERE_ACTIVIDAD = false;
+    {% else %}
+    const REQUIERE_ACTIVIDAD = true;
+    {% endif %}
     let gpsValido = !REQUIERE_GPS;
 
     function actualizarEstadoBotonEntrada() {
@@ -218,7 +235,7 @@
             }
 
             // Validar que textarea tenga contenido para salida
-            if (accion === 'salida') {
+            if (accion === 'salida' && REQUIERE_ACTIVIDAD) {
                 const actividad = document.getElementById('actividad-diaria').value.trim();
                 if (!actividad) {
                     window.showToast('Debes describir tus actividades para marcar salida', 'error');
@@ -234,11 +251,11 @@
 
             try {
                 const formData = new FormData();
-                if (accion === 'salida') {
+                if (accion === 'salida' && REQUIERE_ACTIVIDAD) {
                     const actividad = document.getElementById('actividad-diaria').value.trim();
                     formData.append('actividad', actividad);
                 }
-                
+
                 // Agregar coordenadas GPS si están disponibles
                 if (coordenadasGPS.latitud && coordenadasGPS.longitud) {
                     formData.append('latitud', coordenadasGPS.latitud);

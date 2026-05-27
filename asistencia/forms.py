@@ -33,7 +33,7 @@ class AusenciaProgramadaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["empleado"].queryset = CustomUser.objects.filter(
-            rol=CustomUser.ROL_EMPLEADO, is_active=True
+            rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH], is_active=True
         ).order_by("last_name", "first_name")
         for field in self.fields.values():
             field.widget.attrs.update({
@@ -126,5 +126,5 @@ class MetaHorasPracticanteForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["empleado"].queryset = CustomUser.objects.filter(
-            rol=CustomUser.ROL_EMPLEADO, is_active=True
+            rol=CustomUser.ROL_PPHH, is_active=True
         ).order_by("last_name", "first_name")

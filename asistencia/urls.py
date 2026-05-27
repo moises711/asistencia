@@ -51,6 +51,6 @@ urlpatterns = [
     path("actividades/", views.ActividadesEmpleadosView.as_view(), name="actividades_empleados"),
 
     # Cambio de contraseña (usuario actual)
-    path('password/change/', auth_views.PasswordChangeView.as_view(template_name='asistencia/password_change.html', success_url='/admin-dashboard/'), name='password_change'),
+    path('password/change/', views.RoleAwarePasswordChangeView.as_view(template_name='asistencia/password_change.html'), name='password_change'),
     path('password/change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='asistencia/password_change_done.html'), name='password_change_done'),
 ]

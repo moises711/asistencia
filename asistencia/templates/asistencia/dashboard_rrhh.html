@@ -1,4 +1,5 @@
 {% extends "asistencia/base_admin.html" %}
+{% load static %}
 
 {% block title %}Validar Asistencia{% endblock %}
 
@@ -52,6 +53,16 @@
                         <div class="text-xs text-zinc-400">Manual</div>
                     </div>
                 </button>
+
+                <a href="{% url 'password_change' %}" class="btn-ghost px-4 py-3 rounded-xl flex items-center gap-2 group transition-all">
+                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3V6a3 3 0 10-6 0v2c0 1.657 1.343 3 3 3zm-6 2a2 2 0 00-2 2v3h16v-3a2 2 0 00-2-2H6z"></path>
+                    </svg>
+                    <div class="text-left">
+                        <div class="text-sm text-zinc-200">Cambiar contraseña</div>
+                        <div class="text-xs text-zinc-400">Seguridad de acceso</div>
+                    </div>
+                </a>
             </div>
         </div>
     </div>
@@ -182,6 +193,20 @@
         
         <div id="scanner-feedback" class="mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-transparent transition-all"></div>
 
+        <!-- Opción de validar ubicación (OPCIONAL) -->
+        <div id="opcion-validar-ubicacion" class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 hidden">
+            <div class="flex items-center justify-between gap-3">
+                <div class="text-left">
+                    <div class="text-sm text-amber-200 font-semibold">¿Validar ubicación?</div>
+                    <div class="text-xs text-amber-300/70">Opcional: verifica que el empleado esté en la oficina</div>
+                </div>
+                <button id="btn-validar-ubicacion" onclick="validarUbicacionQR()" class="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 text-xs font-semibold transition-colors whitespace-nowrap">
+                    Validar GPS
+                </button>
+            </div>
+            <div class="mt-2 text-xs text-amber-300/60 hidden" id="validacion-resultado"></div>
+        </div>
+
         <div class="mt-4 flex items-center justify-center gap-2">
             <input type="checkbox" id="keep-scanning" class="rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500" checked>
             <label for="keep-scanning" class="text-xs text-zinc-400 cursor-pointer select-none font-medium">Mantener cámara activa tras lectura</label>
@@ -202,6 +227,7 @@
 
 <script>
     const REQUIERE_GPS = {{ requiere_gps|yesno:"true,false" }};
+    const REQUIERE_ACTIVIDAD = false;
     let gpsValido = !REQUIERE_GPS;
 
     function actualizarEstadoBotonEntrada() {
@@ -231,13 +257,19 @@
         boton.addEventListener("click", async () => {
             const accion = boton.dataset.accion;
 
-            if ((accion === 'entrada' || accion === 'qr') && REQUIERE_GPS && !gpsValido) {
+            // Solo requiere GPS para entrada manual, NO para escaneo QR
+            if (accion === 'entrada' && REQUIERE_GPS && !gpsValido) {
                 window.showToast('Primero comparte tu ubicación GPS', 'error');
                 solicitarGPS();
                 return;
             }
+            
+            // Capturar GPS en background para QR sin bloquear
+            if (accion === 'qr' && REQUIERE_GPS && !gpsValido) {
+                solicitarGPS(false); // Captura en background sin bloquear
+            }
 
-            if (accion === 'salida') {
+            if (accion === 'salida' && REQUIERE_ACTIVIDAD) {
                 const actividad = document.getElementById('actividad-diaria').value.trim();
                 if (!actividad) {
                     window.showToast('Debes describir tus actividades para marcar salida', 'error');
@@ -252,7 +284,7 @@
 
             try {
                 const formData = new FormData();
-                if (accion === 'salida') {
+                if (accion === 'salida' && REQUIERE_ACTIVIDAD) {
                     const actividad = document.getElementById('actividad-diaria').value.trim();
                     formData.append('actividad', actividad);
                 }
@@ -294,15 +326,19 @@
         precisión: null
     };
 
-    function solicitarGPS() {
+    function solicitarGPS(mostrarStatus = true) {
         const status = document.getElementById('gps-status');
-        status.textContent = 'Calculando...';
-        status.className = 'text-xs text-amber-400';
+        if (mostrarStatus) {
+            status.textContent = 'Calculando...';
+            status.className = 'text-xs text-amber-400';
+        }
 
         if (!navigator.geolocation) {
-            status.textContent = 'No soportado';
-            status.className = 'text-xs text-rose-400';
-            window.showToast('Geolocalización no soportada en tu navegador', 'error');
+            if (mostrarStatus) {
+                status.textContent = 'No soportado';
+                status.className = 'text-xs text-rose-400';
+                window.showToast('Geolocalización no soportada en tu navegador', 'error');
+            }
             return;
         }
 
@@ -315,18 +351,20 @@
                 coordenadasGPS.latitud = lat;
                 coordenadasGPS.longitud = lon;
                 coordenadasGPS.precisión = precision;
+                gpsValido = true;
 
-                try {
-                    const respuesta = await fetch('/validar-gps/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({
-                            latitud: lat,
-                            longitud: lon,
-                            precisión: precision
+                if (mostrarStatus) {
+                    try {
+                        const respuesta = await fetch('/validar-gps/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({
+                                latitud: lat,
+                                longitud: lon,
+                                precisión: precision
                         })
                     });
 
@@ -353,30 +391,36 @@
                     window.showToast('Error al validar la ubicación', 'error');
                     coordenadasGPS = { latitud: null, longitud: null, precisión: null };
                 }
+                } else {
+                    // Background: solo capturar sin validar servidor
+                    gpsValido = true;
+                }
             },
             (error) => {
-                gpsValido = false;
-                actualizarEstadoBotonEntrada();
-                status.textContent = 'Error de GPS';
-                status.className = 'text-xs text-rose-400';
-                let mensaje = 'No se pudo obtener la ubicación';
-                switch (error.code) {
-                    case error.PERMISSION_DENIED:
-                        mensaje = 'Permiso de ubicación denegado. Habilita GPS en la configuración';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        mensaje = 'Información de ubicación no disponible';
-                        break;
-                    case error.TIMEOUT:
-                        mensaje = 'Tiempo de espera agotado';
-                        break;
+                if (mostrarStatus) {
+                    gpsValido = false;
+                    actualizarEstadoBotonEntrada();
+                    status.textContent = 'Error de GPS';
+                    status.className = 'text-xs text-rose-400';
+                    let mensaje = 'No se pudo obtener la ubicación';
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            mensaje = 'Permiso de ubicación denegado. Habilita GPS en la configuración';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            mensaje = 'Información de ubicación no disponible';
+                            break;
+                        case error.TIMEOUT:
+                            mensaje = 'Tiempo de espera agotado';
+                            break;
+                    }
+                    window.showToast(mensaje, 'error');
                 }
-                window.showToast(mensaje, 'error');
             },
             {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
+                enableHighAccuracy: mostrarStatus,
+                timeout: mostrarStatus ? 8000 : 5000,
+                maximumAge: mostrarStatus ? 0 : 5000
             }
         );
     }
@@ -570,12 +614,28 @@
         feedback.className = 'mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-amber-500/30 bg-amber-500/10 text-amber-300 animate-pulse';
         feedback.innerHTML = '⏳ Solicitando acceso a la cámara...';
         
+        async function loadScript(srcList) {
+            for (const src of srcList) {
+                if (typeof Html5Qrcode !== 'undefined') return;
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = false;
+                document.body.appendChild(script);
+                const loaded = await new Promise((resolve) => {
+                    script.onload = () => resolve(true);
+                    script.onerror = () => resolve(false);
+                });
+                if (loaded && typeof Html5Qrcode !== 'undefined') return;
+            }
+            throw new Error('No se pudo cargar Html5Qrcode desde CDN ni desde el archivo local.');
+        }
+
         // Cargar script de html5-qrcode si no existe
         if (typeof Html5Qrcode === 'undefined') {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js';
-            document.body.appendChild(script);
-            await new Promise((res) => { script.onload = res; script.onerror = res; });
+            await loadScript([
+                'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/html5-qrcode.min.js',
+                '{% static "asistencia/js/html5-qrcode.min.js" %}'
+            ]);
         }
 
         scannerActivo = true;
@@ -583,10 +643,25 @@
         html5QrScanner = new Html5Qrcode(qrRegionId);
 
         // Configuración de escaneo
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        const config = {
+            fps: 15,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                const size = Math.max(150, Math.min(350, viewfinderWidth - 40, viewfinderHeight - 40));
+                return { width: size, height: size };
+            },
+            aspectRatio: 1.333,
+            disableFlip: false,
+        };
+
+        let scanErrorHintTimeout = null;
+        let ultimoQREmpleado = null; // Guardar datos del empleado para validación opcional
         
         const onScanSuccess = async (decodedText, decodedResult) => {
             if(html5QrScanner.isPaused) return;
+            if (scanErrorHintTimeout) {
+                clearTimeout(scanErrorHintTimeout);
+                scanErrorHintTimeout = null;
+            }
             
             try {
                 showScannerFeedback('Procesando código...', 'warning');
@@ -604,9 +679,13 @@
                     let infoStr = '';
                     if (data.empleado) {
                         infoStr = `${data.empleado.nombre} (${data.empleado.area})`;
+                        ultimoQREmpleado = data.empleado; // Guardar para validación
                     }
                     showScannerFeedback(data.message || 'Marcación registrada', 'success', infoStr);
                     if (window.showToast) window.showToast(data.message, 'success');
+                    
+                    // Mostrar opción de validar ubicación (OPCIONAL)
+                    mostrarOpcionValidarUbicacion();
                     
                     if (!keep) {
                         setTimeout(() => stopScanner(), 1500);
@@ -614,6 +693,7 @@
                 } else {
                     showScannerFeedback(data.message || 'Error al procesar QR', 'error');
                     if (window.showToast) window.showToast(data.message, 'error');
+                    ultimoQREmpleado = null;
                     
                     if (!keep) {
                         setTimeout(() => stopScanner(), 2000);
@@ -622,12 +702,100 @@
             } catch (err) {
                 console.error('Error enviando QR escaneado', err);
                 showScannerFeedback('Error de conexión con el servidor', 'error');
+                ultimoQREmpleado = null;
+            }
+        };
+        
+        // Función para mostrar opción de validación GPS (OPCIONAL)
+        function mostrarOpcionValidarUbicacion() {
+            const opcionDiv = document.getElementById('opcion-validar-ubicacion');
+            if (opcionDiv) {
+                opcionDiv.style.display = 'block';
+                opcionDiv.classList.add('animate-pulse');
+            }
+        }
+        
+        // Función para validar ubicación después del QR
+        window.validarUbicacionQR = async function() {
+            if (!navigator.geolocation) {
+                alert('Geolocalización no soportada en tu navegador');
+                return;
+            }
+            
+            const opcionDiv = document.getElementById('opcion-validar-ubicacion');
+            const btnValidar = document.getElementById('btn-validar-ubicacion');
+            
+            if (btnValidar) btnValidar.disabled = true;
+            if (opcionDiv) opcionDiv.innerHTML = '<div class="text-xs text-amber-400">Obteniendo ubicación...</div>';
+            
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const precision = position.coords.accuracy;
+                    
+                    try {
+                        const respuesta = await fetch('/validar-gps/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({
+                                latitud: lat,
+                                longitud: lon,
+                                precisión: precision
+                            })
+                        });
+                        
+                        const datos = await respuesta.json();
+                        
+                        if (datos.valido) {
+                            if (opcionDiv) {
+                                opcionDiv.innerHTML = `<div class="text-xs text-emerald-400">✓ Ubicación válida (${datos.distancia}m de la oficina)</div>`;
+                            }
+                            if (window.showToast) window.showToast(`✓ ${ultimoQREmpleado?.nombre} está en la oficina (${datos.distancia}m)`, 'success');
+                        } else {
+                            if (opcionDiv) {
+                                opcionDiv.innerHTML = `<div class="text-xs text-rose-400">✗ Fuera de rango (${datos.distancia}m de la oficina)</div>`;
+                            }
+                            if (window.showToast) window.showToast(`⚠ ${ultimoQREmpleado?.nombre} está fuera de la oficina (${datos.distancia}m)`, 'warning');
+                        }
+                    } catch (err) {
+                        console.error('Error validando GPS:', err);
+                        if (opcionDiv) opcionDiv.innerHTML = '<div class="text-xs text-rose-400">Error al validar ubicación</div>';
+                    }
+                },
+                (error) => {
+                    let mensaje = 'No se pudo obtener la ubicación';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        mensaje = 'Permiso de ubicación denegado';
+                    }
+                    if (opcionDiv) opcionDiv.innerHTML = `<div class="text-xs text-rose-400">${mensaje}</div>`;
+                    if (window.showToast) window.showToast(mensaje, 'error');
+                },
+                {
+                    enableHighAccuracy: false,
+                    timeout: 5000,
+                    maximumAge: 5000
+                }
+            );
+        };
+
+        const onScanError = (errorMessage) => {
+            console.warn('Error en el escaneo de QR:', errorMessage);
+            if (!scanErrorHintTimeout) {
+                scanErrorHintTimeout = setTimeout(() => {
+                    showScannerFeedback('📷 Acércalo y centra el QR dentro del recuadro.', 'warning');
+                    scanErrorHintTimeout = null;
+                }, 1200);
             }
         };
 
         try {
             // 1. Pedir permisos y obtener cámaras disponibles
             const devices = await Html5Qrcode.getCameras();
+            let cameraIdOrConfig = { facingMode: { ideal: 'environment' } };
             
             if (devices && devices.length > 0) {
                 feedback.style.display = 'none'; // Ocultar mensaje de cargando
@@ -635,22 +803,26 @@
                 // 2. Intentar buscar una cámara trasera (útil en móviles)
                 let cameraId = devices[0].id; // Por defecto la primera (suele ser frontal en laptops)
                 for (let i = 0; i < devices.length; i++) {
-                    const label = devices[i].label.toLowerCase();
-                    if (label.includes('back') || label.includes('trasera') || label.includes('environment')) {
+                    const label = (devices[i].label || '').toLowerCase();
+                    if (label.includes('back') || label.includes('trasera') || label.includes('environment') || label.includes('rear')) {
                         cameraId = devices[i].id;
                         break;
                     }
                 }
 
-                // 3. Iniciar el escáner con el ID de la cámara seleccionada
-                await html5QrScanner.start(
-                    cameraId,
-                    config,
-                    onScanSuccess
-                );
+                cameraIdOrConfig = cameraId;
             } else {
-                throw new Error("No se detectó ninguna cámara conectada.");
+                console.warn('No se detectaron cámaras con Html5Qrcode.getCameras, usando fallback de constraints genéricas.');
             }
+
+            // 3. Iniciar el escáner con el ID de la cámara seleccionada o con constraints genéricas
+            await html5QrScanner.start(
+                cameraIdOrConfig,
+                config,
+                onScanSuccess,
+                onScanError
+            );
+            showScannerFeedback('📷 Cámara abierta, escaneando...', 'success');
         } catch (err) {
             console.error('Error al acceder a la cámara:', err);
             showScannerFeedback('❌ Permiso denegado o no hay cámara.', 'error');

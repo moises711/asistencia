@@ -185,6 +185,33 @@ class RRHHAndPermissionsTests(TestCase):
         response = self.client.get("/dashboard/")
         self.assertEqual(response.status_code, 200)
 
+    def test_rrhh_puede_marcar_salida_sin_descripcion(self):
+        self.rrhh.permite_remoto = True
+        self.rrhh.save(update_fields=["permite_remoto"])
+        self.client.login(username="rrhh_user", password="test1234")
+        fecha = date(2026, 5, 27)
+        RegistroAsistencia.objects.create(
+            empleado=self.rrhh,
+            fecha=fecha,
+            hora_entrada=timezone.make_aware(datetime.combine(fecha, time(9, 0))),
+            estado=RegistroAsistencia.ESTADO_A_TIEMPO,
+        )
+
+        with patch("asistencia.views.timezone.localdate", return_value=fecha), patch(
+            "asistencia.views.timezone.now",
+            return_value=timezone.make_aware(datetime.combine(fecha, time(18, 0))),
+        ):
+            response = self.client.post("/marcar/salida/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse("resumen de actividades" in response.content.decode("utf-8").lower())
+
+    def test_dashboard_rrhh_no_muestra_exigencia_de_actividad(self):
+        self.client.login(username="rrhh_user", password="test1234")
+        response = self.client.get("/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Resumen de Actividades del Día")
+
     def test_rrhh_no_puede_asignar_rol_admin(self):
         self.client.login(username="rrhh_user", password="test1234")
         response = self.client.post(
@@ -208,6 +235,18 @@ class RRHHAndPermissionsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(CustomUser.objects.filter(pk=empleado2.id).exists())
 
+    def test_rrhh_puede_eliminar_practicante(self):
+        self.client.login(username="rrhh_user", password="test1234")
+        practicante = CustomUser.objects.create_user(
+            username="practicante2",
+            password="test1234",
+            dni="33445566",
+            rol=CustomUser.ROL_PPHH,
+        )
+        response = self.client.post(f"/empleados/{practicante.id}/eliminar/", follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CustomUser.objects.filter(pk=practicante.id).exists())
+
     def test_rrhh_no_puede_eliminar_admin(self):
         self.client.login(username="rrhh_user", password="test1234")
         response = self.client.post(f"/empleados/{self.admin.id}/eliminar/")
@@ -218,6 +257,32 @@ class RRHHAndPermissionsTests(TestCase):
         self.client.login(username="rrhh_user", password="test1234")
         response = self.client.get("/asistencias/reporte/excel/")
         self.assertEqual(response.status_code, 200)
+
+    def test_formulario_permiso_incluye_practicante(self):
+        from .forms import AusenciaProgramadaForm
+
+        practicante = CustomUser.objects.create_user(
+            username="practicante_form",
+            password="test1234",
+            dni="44556677",
+            rol=CustomUser.ROL_PPHH,
+        )
+        form = AusenciaProgramadaForm()
+        self.assertIn(practicante, form.fields["empleado"].queryset)
+        self.assertIn(self.empleado, form.fields["empleado"].queryset)
+
+    def test_formulario_meta_horas_solo_practicante(self):
+        from .forms import MetaHorasPracticanteForm
+
+        practicante = CustomUser.objects.create_user(
+            username="practicante_meta",
+            password="test1234",
+            dni="55667788",
+            rol=CustomUser.ROL_PPHH,
+        )
+        form = MetaHorasPracticanteForm()
+        self.assertIn(practicante, form.fields["empleado"].queryset)
+        self.assertNotIn(self.empleado, form.fields["empleado"].queryset)
 
     def test_ausencia_aprobada_no_genera_falta_ni_recuperacion(self):
         self.client.login(username="admin_user", password="test1234")
@@ -330,6 +395,17 @@ class HolidayAndApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.rol, CustomUser.ROL_RRHH)
+
+    def test_actualizar_empleado_api_cambia_contrasena(self):
+        self.client.login(username="admin_user", password="test1234")
+        response = self.client.post(
+            f"/api/empleado/{self.empleado.id}/actualizar/",
+            data='{"password1": "NuevaClave123!", "password2": "NuevaClave123!"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.empleado.refresh_from_db()
+        self.assertTrue(self.empleado.check_password("NuevaClave123!"))
 
     def test_actualizar_empleado_api_campos_completos(self):
         self.client.login(username="admin_user", password="test1234")
@@ -560,5 +636,39 @@ class MarcarEntradaValidacionesTests(TestCase):
         registro = RegistroAsistencia.objects.get(empleado=self.empleado)
         self.assertIsNotNone(registro.hora_entrada)
         self.assertIsNotNone(registro.latitud_entrada)
+
+    def test_salida_para_pphh_no_exige_actividad(self):
+        self.empleado.rol = CustomUser.ROL_PPHH
+        self.empleado.save(update_fields=["rol"])
+        self.client.login(username="practicante1", password="test1234")
+
+        fecha = date(2026, 5, 26)
+        RegistroAsistencia.objects.create(
+            empleado=self.empleado,
+            fecha=fecha,
+            hora_entrada=timezone.make_aware(datetime.combine(fecha, time(9, 0))),
+            estado=RegistroAsistencia.ESTADO_A_TIEMPO,
+        )
+
+        with patch("asistencia.views.timezone.localdate", return_value=fecha), patch(
+            "asistencia.views.timezone.now",
+            return_value=timezone.make_aware(datetime.combine(fecha, time(18, 0))),
+        ):
+            response = self.client.post("/marcar/salida/")
+
+        self.assertEqual(response.status_code, 200)
+        registro = RegistroAsistencia.objects.get(empleado=self.empleado, fecha=fecha)
+        self.assertIsNotNone(registro.hora_salida)
+        self.assertIsNone(registro.actividad_diaria)
+
+    def test_dashboard_pphh_no_muestra_actividad_obligatoria(self):
+        self.empleado.rol = CustomUser.ROL_PPHH
+        self.empleado.save(update_fields=["rol"])
+        self.client.login(username="practicante1", password="test1234")
+
+        response = self.client.get("/dashboard/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Resumen de Actividades del Día")
 
 
