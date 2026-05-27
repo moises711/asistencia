@@ -77,45 +77,14 @@
                 <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm">
                     <div class="font-semibold text-emerald-200">Escanea QR del empleado</div>
                     <div class="text-zinc-300 mt-1">
-                        Lee el código QR del carnet de empleado para validar entrada/salida
+                        La cámara se cerrará automáticamente cuando el registro se complete.
                     </div>
                 </div>
 
-                <div class="space-y-2">
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                        Código QR del Empleado
-                    </label>
-                    <div class="flex gap-2">
-                        <input 
-                            id="qr-input" 
-                            type="text" 
-                            class="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 placeholder-zinc-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
-                            placeholder="Escanea aquí o ingresa el código QR..."
-                            autocomplete="off"
-                            autofocus
-                        />
-                        <button id="btn-toggle-scanner" onclick="toggleScanner()" class="btn-ghost px-4 rounded-xl flex items-center justify-center border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors" title="Abrir cámara">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid sm:grid-cols-2 gap-3">
-                    <button id="btn-entrada-qr" class="btn-neo py-3 rounded-xl" onclick="validarAsistenciaQR('entrada')">
-                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11l3 3L20 5m-9 11a9 9 0 110-18 9 9 0 0110 18z"></path>
-                        </svg>
-                        Validar Entrada
-                    </button>
-                    <button id="btn-salida-qr" class="btn-neo py-3 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 border-none" onclick="validarAsistenciaQR('salida')">
-                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                        </svg>
-                        Validar Salida
-                    </button>
-                </div>
-
-                <div id="resultado-qr" class="hidden rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm animate-pulse"></div>
+                <button id="btn-toggle-scanner" onclick="toggleScanner()" class="btn-ghost w-full min-h-[76px] px-6 rounded-2xl flex items-center justify-center gap-3 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 transition-colors shadow-[0_0_18px_rgba(16,185,129,0.08)]" title="Abrir cámara">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span class="text-base sm:text-lg font-semibold">Abrir cámara y escanear</span>
+                </button>
             </div>
         </div>
 
@@ -207,10 +176,6 @@
             <div class="mt-2 text-xs text-amber-300/60 hidden" id="validacion-resultado"></div>
         </div>
 
-        <div class="mt-4 flex items-center justify-center gap-2">
-            <input type="checkbox" id="keep-scanning" class="rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500" checked>
-            <label for="keep-scanning" class="text-xs text-zinc-400 cursor-pointer select-none font-medium">Mantener cámara activa tras lectura</label>
-        </div>
     </div>
 </div>
 
@@ -471,92 +436,47 @@
         }
     });
 
-    async function validarAsistenciaQR(accion) {
-        const qrInput = document.getElementById('qr-input');
-        const codigoQR = qrInput.value.trim().toUpperCase();
-        
-        if (!codigoQR) {
-            window.showToast('Ingresa o escanea un código QR', 'error');
-            qrInput.focus();
-            return;
-        }
-
-        const btnEntrada = document.getElementById('btn-entrada-qr');
-        const btnSalida = document.getElementById('btn-salida-qr');
-        const btnActivo = accion === 'entrada' ? btnEntrada : btnSalida;
-        const textOriginal = btnActivo.textContent;
-
-        btnEntrada.disabled = true;
-        btnSalida.disabled = true;
-        btnActivo.textContent = 'Procesando...';
-
-        try {
-            const response = await fetch('/api/escanear-qr/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    codigo_qr: codigoQR,
-                    accion: accion
-                })
-            });
-
-            const data = await response.json();
-            const resultadoDiv = document.getElementById('resultado-qr');
-
-            if (response.ok) {
-                resultadoDiv.className = 'rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200';
-                resultadoDiv.innerHTML = `
-                    <div class="font-semibold mb-2">${data.message}</div>
-                    ${data.empleado ? `
-                        <div class="text-xs space-y-1 text-emerald-300">
-                            <div><strong>Nombre:</strong> ${data.empleado.nombre}</div>
-                            <div><strong>DNI:</strong> ${data.empleado.dni}</div>
-                            <div><strong>Área:</strong> ${data.empleado.area}</div>
-                            ${data.empleado.hora_entrada ? `<div><strong>Entrada:</strong> ${data.empleado.hora_entrada}</div>` : ''}
-                            ${data.empleado.hora_salida ? `<div><strong>Salida:</strong> ${data.empleado.hora_salida}</div>` : ''}
-                            ${data.empleado.horas_trabajadas ? `<div><strong>Horas:</strong> ${data.empleado.horas_trabajadas}</div>` : ''}
-                        </div>
-                    ` : ''}
-                `;
-                window.showToast(data.message, 'success');
-            } else {
-                const cssClass = response.status === 404 
-                    ? 'rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200'
-                    : 'rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200';
-                resultadoDiv.className = cssClass;
-                resultadoDiv.textContent = data.message || 'Error al procesar el código QR';
-                window.showToast(data.message || 'Error', 'error');
-            }
-
-            resultadoDiv.classList.remove('hidden');
-            qrInput.value = '';
-            qrInput.focus();
-
-        } catch (error) {
-            console.error('Error:', error);
-            window.showToast('Error de conexión', 'error');
-        } finally {
-            btnEntrada.disabled = false;
-            btnSalida.disabled = false;
-            btnActivo.textContent = textOriginal;
-        }
-    }
-
-    // Permitir validar por Enter en el input
-    document.getElementById('qr-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            validarAsistenciaQR('entrada');
-        }
-    });
-
     // --- Escáner de cámara con Modal ---
     let html5QrScanner = null;
     let scannerActivo = false;
     let currentScanMode = 'entrada'; // 'entrada' o 'salida'
+    let ultimoCodigoEscaneado = null;
+    let ultimoCodigoEscaneadoAt = 0;
+    let audioContextQR = null;
+
+    function reproducirSonidoQR(tipo = 'success') {
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+
+            if (!audioContextQR) {
+                audioContextQR = new AudioContextClass();
+            }
+
+            if (audioContextQR.state === 'suspended') {
+                audioContextQR.resume();
+            }
+
+            const oscillator = audioContextQR.createOscillator();
+            const gainNode = audioContextQR.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.value = tipo === 'success' ? 880 : 220;
+            gainNode.gain.value = 0.0001;
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContextQR.destination);
+
+            const now = audioContextQR.currentTime;
+            gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+            oscillator.start(now);
+            oscillator.stop(now + 0.2);
+        } catch (error) {
+            console.warn('No se pudo reproducir el sonido QR:', error);
+        }
+    }
 
     function toggleScanner() {
         if (scannerActivo) {
@@ -658,6 +578,16 @@
         
         const onScanSuccess = async (decodedText, decodedResult) => {
             if(html5QrScanner.isPaused) return;
+            const ahora = Date.now();
+            const codigoLimpio = (decodedText || '').trim().toUpperCase();
+            if (!codigoLimpio) return;
+            if (codigoLimpio === ultimoCodigoEscaneado && (ahora - ultimoCodigoEscaneadoAt) < 2500) {
+                return;
+            }
+
+            ultimoCodigoEscaneado = codigoLimpio;
+            ultimoCodigoEscaneadoAt = ahora;
+
             if (scanErrorHintTimeout) {
                 clearTimeout(scanErrorHintTimeout);
                 scanErrorHintTimeout = null;
@@ -665,12 +595,12 @@
             
             try {
                 showScannerFeedback('Procesando código...', 'warning');
+                reproducirSonidoQR('success');
 
-                const keep = document.getElementById('keep-scanning').checked;
                 const response = await fetch('/api/escanear-qr/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                    body: JSON.stringify({ codigo_qr: decodedText, accion: currentScanMode })
+                    body: JSON.stringify({ codigo_qr: codigoLimpio, accion: currentScanMode })
                 });
                 
                 const data = await response.json();
@@ -683,25 +613,20 @@
                     }
                     showScannerFeedback(data.message || 'Marcación registrada', 'success', infoStr);
                     if (window.showToast) window.showToast(data.message, 'success');
+                    stopScanner();
                     
                     // Mostrar opción de validar ubicación (OPCIONAL)
                     mostrarOpcionValidarUbicacion();
-                    
-                    if (!keep) {
-                        setTimeout(() => stopScanner(), 1500);
-                    }
                 } else {
                     showScannerFeedback(data.message || 'Error al procesar QR', 'error');
+                    reproducirSonidoQR('error');
                     if (window.showToast) window.showToast(data.message, 'error');
                     ultimoQREmpleado = null;
-                    
-                    if (!keep) {
-                        setTimeout(() => stopScanner(), 2000);
-                    }
                 }
             } catch (err) {
                 console.error('Error enviando QR escaneado', err);
                 showScannerFeedback('Error de conexión con el servidor', 'error');
+                reproducirSonidoQR('error');
                 ultimoQREmpleado = null;
             }
         };
@@ -846,6 +771,8 @@
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         scannerActivo = false;
+        ultimoCodigoEscaneado = null;
+        ultimoCodigoEscaneadoAt = 0;
     }
 
     async function marcarRRHH(accion) {

@@ -9,6 +9,7 @@ from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.staticfiles import finders
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -53,6 +54,16 @@ def formatear_duracion(duracion: timedelta | None) -> str:
     horas = total_minutos // 60
     minutos = total_minutos % 60
     return f"{horas}:{minutos:02d}"
+
+
+def service_worker(request):
+    sw_path = finders.find("sw.js")
+    if sw_path:
+        with open(sw_path, "rb") as file_handle:
+            response = HttpResponse(file_handle.read(), content_type="application/javascript")
+            response["Cache-Control"] = "no-cache"
+            return response
+    return HttpResponse("self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));", content_type="application/javascript")
 
 
 def mensajes_validation_error(error: ValidationError) -> str:

@@ -10,7 +10,7 @@ class ConfiguracionGPS(models.Model):
     nombre = models.CharField(max_length=100, default="Oficina Principal")
     latitud = models.DecimalField(max_digits=9, decimal_places=6, help_text="Latitud de la oficina")
     longitud = models.DecimalField(max_digits=9, decimal_places=6, help_text="Longitud de la oficina")
-    radio_permitido_metros = models.IntegerField(default=20, help_text="Radio permitido en metros para marcar asistencia")
+    radio_permitido_metros = models.IntegerField(default=50, help_text="Radio permitido en metros para marcar asistencia")
     activa = models.BooleanField(default=True)
     creada_en = models.DateTimeField(auto_now_add=True)
     actualizada_en = models.DateTimeField(auto_now=True)

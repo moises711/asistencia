@@ -16,8 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from asistencia import views as asistencia_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('sw.js', asistencia_views.service_worker, name='service_worker'),
     path('', include('asistencia.urls')),
 ]
