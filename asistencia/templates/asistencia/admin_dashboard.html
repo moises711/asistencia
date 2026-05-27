@@ -48,6 +48,7 @@
     </div>
 
     <!-- Botón de Configuración GPS -->
+    <div class="flex gap-2">
     <button onclick="abrirModalConfigGPS()" 
             class="w-full glass rounded-2xl p-6 hover:bg-zinc-800/50 transition text-left group">
         <div class="flex items-center justify-between">
@@ -60,6 +61,8 @@
             </svg>
         </div>
     </button>
+    <a href="/password/change/" class="w-44 glass rounded-2xl p-6 hover:bg-zinc-800/50 transition text-center text-sm self-start">🔑 Cambiar contraseña</a>
+    </div>
 
     <!-- MODAL Grande de Configuración GPS -->
     <div id="modalConfigGPS" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target === this) cerrarModalConfigGPS()">

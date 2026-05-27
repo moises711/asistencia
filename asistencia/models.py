@@ -85,12 +85,14 @@ class CustomUser(AbstractUser):
     ROL_RRHH = "rrhh"
     ROL_SUPERVISOR = "supervisor"
     ROL_EMPLEADO = "empleado"
+    ROL_PPHH = "pphh"
 
     ROLES = (
         (ROL_ADMIN, "Administrador"),
         (ROL_RRHH, "RRHH"),
         (ROL_SUPERVISOR, "Supervisor"),
         (ROL_EMPLEADO, "Empleado"),
+        (ROL_PPHH, "Practicante (PP.HH.)"),
     )
     
     rol = models.CharField(max_length=20, choices=ROLES, default=ROL_EMPLEADO)

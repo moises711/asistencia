@@ -21,10 +21,15 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div class="flex items-center gap-3">
                 <span class="text-sm font-semibold text-zinc-300">Filtrar por Rol:</span>
-                <div class="flex bg-white/5 border border-white/10 rounded-lg p-1">
+                <div class="flex bg-white/5 border border-white/10 rounded-lg p-1 flex-wrap gap-1">
                     <button type="button" data-filter="all" class="filter-btn px-4 py-1.5 text-sm font-semibold bg-white/10 text-zinc-200 rounded hover:bg-white/20 transition-colors">Todos</button>
-                    <button type="button" data-filter="empleado" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Empleados</button>
-                    <button type="button" data-filter="supervisor" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">Practicantes</button>
+                    <button type="button" data-filter="empleado" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors rounded">Empleados</button>
+                    <button type="button" data-filter="pphh" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors rounded">Practicantes</button>
+                    {% if request.user.rol == 'admin' %}
+                    <button type="button" data-filter="supervisor" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors rounded">Supervisores</button>
+                    <button type="button" data-filter="rrhh" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors rounded">RRHH</button>
+                    <button type="button" data-filter="admin" class="filter-btn px-4 py-1.5 text-sm font-semibold text-zinc-400 hover:text-zinc-200 transition-colors rounded">Administradores</button>
+                    {% endif %}
                 </div>
             </div>
             
@@ -58,6 +63,7 @@
                 </thead>
                 <tbody id="personal-rows">
                     {% for empleado in empleados %}
+                    {% if request.user.rol == 'admin' or empleado.rol == 'empleado' or empleado.rol == 'pphh' %}
                     <tr class="border-t border-white/5 hover:bg-white/[0.02] transition-colors" data-rol="{{ empleado.rol }}">
                         <td class="px-4 py-4 flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold uppercase">
@@ -116,6 +122,7 @@
                         </div>
                         </td>
                     </tr>
+                    {% endif %}
                     {% empty %}
                     <tr class="border-t border-white/5">
                         <td colspan="6" class="px-4 py-8 text-center text-zinc-400">
@@ -189,9 +196,12 @@
                     <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Rol / Cargo</label>
                     <select id="id_rol_custom" name="rol" class="select-corregido-modal">
                         <option value="empleado">Empleado</option>
+                        <option value="pphh">Practicante</option>
+                        {% if request.user.rol == 'admin' %}
                         <option value="supervisor">Supervisor</option>
-                        <option value="admin">Administrador</option>
                         <option value="rrhh">RRHH</option>
+                        <option value="admin">Administrador</option>
+                        {% endif %}
                     </select>
                 </div>
             </div>
@@ -454,10 +464,8 @@
             const rol = fila.dataset.rol;
             if (filtro === 'all') {
                 fila.hidden = false;
-            } else if (filtro === 'empleado') {
-                fila.hidden = rol !== 'empleado';
-            } else if (filtro === 'supervisor') {
-                fila.hidden = rol !== 'supervisor';
+            } else {
+                fila.hidden = rol !== filtro;
             }
         });
     }

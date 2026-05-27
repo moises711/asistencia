@@ -40,15 +40,16 @@
                     </div>
                 </button>
 
-                <button class="btn-neo px-4 py-3 rounded-xl flex items-center gap-2" onclick="abrirEscanerQR()">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z">
-                        </path>
-                    </svg>
+                <button id="btn-entrada-rrhh" class="btn-neo px-4 py-3 rounded-xl flex items-center gap-2" onclick="marcarRRHH('entrada')">
                     <div class="text-left">
-                        <div class="text-sm">Escanear QR</div>
-                        <div class="text-xs opacity-80">En recepcion</div>
+                        <div class="text-sm">Marcar entrada</div>
+                        <div class="text-xs opacity-80">Manual</div>
+                    </div>
+                </button>
+                <button id="btn-salida-rrhh" class="btn-ghost px-4 py-3 rounded-xl flex items-center gap-2 group transition-all" onclick="marcarRRHH('salida')">
+                    <div class="text-left">
+                        <div class="text-sm text-zinc-200">Marcar salida</div>
+                        <div class="text-xs text-zinc-400">Manual</div>
                     </div>
                 </button>
             </div>
@@ -73,14 +74,19 @@
                     <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
                         Código QR del Empleado
                     </label>
-                    <input 
-                        id="qr-input" 
-                        type="text" 
-                        class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 placeholder-zinc-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
-                        placeholder="Escanea aquí o ingresa el código QR..."
-                        autocomplete="off"
-                        autofocus
-                    />
+                    <div class="flex gap-2">
+                        <input 
+                            id="qr-input" 
+                            type="text" 
+                            class="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 placeholder-zinc-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                            placeholder="Escanea aquí o ingresa el código QR..."
+                            autocomplete="off"
+                            autofocus
+                        />
+                        <button id="btn-toggle-scanner" onclick="toggleScanner()" class="btn-ghost px-4 rounded-xl flex items-center justify-center border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors" title="Abrir cámara">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="grid sm:grid-cols-2 gap-3">
@@ -154,6 +160,45 @@
         </ul>
     </div>
 </div>
+
+<!-- Modal para Escáner de Cámara -->
+<div id="modal-scanner" class="hidden fixed inset-0 bg-black/80 z-[60] flex-col items-center justify-center p-4 backdrop-blur-sm" onclick="if(event.target === this) stopScanner()">
+    <div class="bg-zinc-900 rounded-3xl w-full max-w-md border border-white/10 shadow-2xl p-6 relative overflow-hidden flex flex-col fade-in">
+        <button onclick="stopScanner()" class="absolute top-4 right-4 text-zinc-400 hover:text-white p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors z-10">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        
+        <h3 class="text-xl font-bold text-zinc-100 mb-2 text-center">Escanear Carnet</h3>
+        <p class="text-sm text-zinc-400 text-center mb-4">Selecciona la acción y apunta al código QR</p>
+
+        <div class="flex bg-black/50 border border-white/10 p-1 rounded-xl mb-4 mx-auto w-full max-w-[280px]">
+            <button id="scan-mode-entrada" onclick="setScanMode('entrada')" class="flex-1 py-2 text-sm font-bold rounded-lg bg-emerald-500/20 text-emerald-400 transition-all shadow-[0_0_10px_rgba(52,211,153,0.1)]">Marcar Entrada</button>
+            <button id="scan-mode-salida" onclick="setScanMode('salida')" class="flex-1 py-2 text-sm font-bold rounded-lg text-zinc-400 hover:text-zinc-200 transition-all">Marcar Salida</button>
+        </div>
+
+        <div id="qr-reader-container" class="rounded-2xl overflow-hidden bg-black/80 border-2 border-dashed border-zinc-700 relative w-full aspect-square flex items-center justify-center shadow-inner">
+            <div id="qr-reader" style="width: 100%; border: none;"></div>
+        </div>
+        
+        <div id="scanner-feedback" class="mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-transparent transition-all"></div>
+
+        <div class="mt-4 flex items-center justify-center gap-2">
+            <input type="checkbox" id="keep-scanning" class="rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500" checked>
+            <label for="keep-scanning" class="text-xs text-zinc-400 cursor-pointer select-none font-medium">Mantener cámara activa tras lectura</label>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Ocultar UI intrusiva de la librería html5-qrcode */
+    #qr-reader img[alt="Info icon"] { display: none !important; }
+    #qr-reader__dashboard_section_csr span { color: white !important; }
+    #qr-reader__dashboard_section_swaplink { color: #34d399 !important; text-decoration: none; font-weight: bold; }
+    #qr-reader button {
+        background: #18181b; color: white; border: 1px solid rgba(255,255,255,0.1); 
+        padding: 6px 12px; border-radius: 8px; margin-top: 8px; cursor: pointer;
+    }
+</style>
 
 <script>
     const REQUIERE_GPS = {{ requiere_gps|yesno:"true,false" }};
@@ -463,6 +508,210 @@
             validarAsistenciaQR('entrada');
         }
     });
+
+    // --- Escáner de cámara con Modal ---
+    let html5QrScanner = null;
+    let scannerActivo = false;
+    let currentScanMode = 'entrada'; // 'entrada' o 'salida'
+
+    function toggleScanner() {
+        if (scannerActivo) {
+            stopScanner();
+        } else {
+            startScanner();
+        }
+    }
+
+    function setScanMode(mode) {
+        currentScanMode = mode;
+        const btnEntrada = document.getElementById('scan-mode-entrada');
+        const btnSalida = document.getElementById('scan-mode-salida');
+        
+        if (mode === 'entrada') {
+            btnEntrada.className = 'flex-1 py-2 text-sm font-bold rounded-lg bg-emerald-500/20 text-emerald-400 transition-all shadow-[0_0_10px_rgba(52,211,153,0.1)]';
+            btnSalida.className = 'flex-1 py-2 text-sm font-bold rounded-lg text-zinc-400 hover:text-zinc-200 transition-all';
+        } else {
+            btnSalida.className = 'flex-1 py-2 text-sm font-bold rounded-lg bg-rose-500/20 text-rose-400 transition-all shadow-[0_0_10px_rgba(251,113,133,0.1)]';
+            btnEntrada.className = 'flex-1 py-2 text-sm font-bold rounded-lg text-zinc-400 hover:text-zinc-200 transition-all';
+        }
+    }
+
+    function showScannerFeedback(message, type = 'success', infoHtml = '') {
+        const feedback = document.getElementById('scanner-feedback');
+        feedback.style.display = 'block';
+        
+        if (type === 'success') {
+            feedback.className = 'mt-4 text-center min-h-[48px] flex flex-col items-center justify-center text-sm font-semibold rounded-xl p-3 border border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+            feedback.innerHTML = `<div>✔️ ${message}</div>${infoHtml ? `<div class="text-xs font-normal mt-1 opacity-90">${infoHtml}</div>` : ''}`;
+        } else if (type === 'error') {
+            feedback.className = 'mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-rose-500/30 bg-rose-500/10 text-rose-300';
+            feedback.innerHTML = `❌ ${message}`;
+        } else {
+            feedback.className = 'mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-amber-500/30 bg-amber-500/10 text-amber-300 animate-pulse';
+            feedback.innerHTML = `⏳ ${message}`;
+        }
+
+        // Limpiar mensaje después de unos segundos si es error
+        if (type === 'error') {
+            setTimeout(() => {
+                feedback.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    async function startScanner() {
+        const modal = document.getElementById('modal-scanner');
+        const feedback = document.getElementById('scanner-feedback');
+        
+        // Mostrar modal primero
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        feedback.style.display = 'block';
+        feedback.className = 'mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-amber-500/30 bg-amber-500/10 text-amber-300 animate-pulse';
+        feedback.innerHTML = '⏳ Solicitando acceso a la cámara...';
+        
+        // Cargar script de html5-qrcode si no existe
+        if (typeof Html5Qrcode === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js';
+            document.body.appendChild(script);
+            await new Promise((res) => { script.onload = res; script.onerror = res; });
+        }
+
+        scannerActivo = true;
+        const qrRegionId = 'qr-reader';
+        html5QrScanner = new Html5Qrcode(qrRegionId);
+
+        // Configuración de escaneo
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        const onScanSuccess = async (decodedText, decodedResult) => {
+            if(html5QrScanner.isPaused) return;
+            
+            try {
+                showScannerFeedback('Procesando código...', 'warning');
+
+                const keep = document.getElementById('keep-scanning').checked;
+                const response = await fetch('/api/escanear-qr/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ codigo_qr: decodedText, accion: currentScanMode })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let infoStr = '';
+                    if (data.empleado) {
+                        infoStr = `${data.empleado.nombre} (${data.empleado.area})`;
+                    }
+                    showScannerFeedback(data.message || 'Marcación registrada', 'success', infoStr);
+                    if (window.showToast) window.showToast(data.message, 'success');
+                    
+                    if (!keep) {
+                        setTimeout(() => stopScanner(), 1500);
+                    }
+                } else {
+                    showScannerFeedback(data.message || 'Error al procesar QR', 'error');
+                    if (window.showToast) window.showToast(data.message, 'error');
+                    
+                    if (!keep) {
+                        setTimeout(() => stopScanner(), 2000);
+                    }
+                }
+            } catch (err) {
+                console.error('Error enviando QR escaneado', err);
+                showScannerFeedback('Error de conexión con el servidor', 'error');
+            }
+        };
+
+        try {
+            // 1. Pedir permisos y obtener cámaras disponibles
+            const devices = await Html5Qrcode.getCameras();
+            
+            if (devices && devices.length > 0) {
+                feedback.style.display = 'none'; // Ocultar mensaje de cargando
+                
+                // 2. Intentar buscar una cámara trasera (útil en móviles)
+                let cameraId = devices[0].id; // Por defecto la primera (suele ser frontal en laptops)
+                for (let i = 0; i < devices.length; i++) {
+                    const label = devices[i].label.toLowerCase();
+                    if (label.includes('back') || label.includes('trasera') || label.includes('environment')) {
+                        cameraId = devices[i].id;
+                        break;
+                    }
+                }
+
+                // 3. Iniciar el escáner con el ID de la cámara seleccionada
+                await html5QrScanner.start(
+                    cameraId,
+                    config,
+                    onScanSuccess
+                );
+            } else {
+                throw new Error("No se detectó ninguna cámara conectada.");
+            }
+        } catch (err) {
+            console.error('Error al acceder a la cámara:', err);
+            showScannerFeedback('❌ Permiso denegado o no hay cámara.', 'error');
+            window.showToast('Debes permitir el acceso a la cámara en el navegador.', 'error');
+            setTimeout(() => {
+                stopScanner();
+            }, 3000);
+        }
+    }
+
+    function stopScanner() {
+        const modal = document.getElementById('modal-scanner');
+        if (html5QrScanner) {
+            html5QrScanner.stop().then(() => {
+                html5QrScanner.clear();
+                html5QrScanner = null;
+            }).catch(() => {
+                html5QrScanner = null;
+            });
+        }
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        scannerActivo = false;
+    }
+
+    async function marcarRRHH(accion) {
+        const btn = document.getElementById(accion === 'entrada' ? 'btn-entrada-rrhh' : 'btn-salida-rrhh');
+        if (!btn) return;
+        const orig = btn.textContent;
+        btn.textContent = 'Procesando...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            // Enviar coordenadas si se capturaron
+            if (typeof coordenadasGPS !== 'undefined' && coordenadasGPS.latitud && coordenadasGPS.longitud) {
+                formData.append('latitud', coordenadasGPS.latitud);
+                formData.append('longitud', coordenadasGPS.longitud);
+                formData.append('precisión', coordenadasGPS.precisión);
+            }
+
+            const res = await fetch(`/marcar/${accion}/`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                window.showToast(data.message || 'Registro exitoso', 'success');
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                window.showToast(data.message || 'Error al marcar', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            window.showToast('Error de conexión', 'error');
+        } finally {
+            btn.textContent = orig;
+            btn.disabled = false;
+        }
+    }
 
 </script>
 {% endblock %}

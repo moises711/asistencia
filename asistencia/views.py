@@ -199,7 +199,6 @@ class PanelControlView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         hoy = timezone.localdate()
         empleados = CustomUser.objects.filter(
-            rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_SUPERVISOR],
             is_active=True,
         ).select_related('area')
         asistencias_hoy = RegistroAsistencia.objects.filter(fecha=hoy)
@@ -244,7 +243,8 @@ class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
         inicio_semana = hoy - timedelta(days=hoy.weekday())
         inicio_mes = hoy.replace(day=1)
 
-        empleados = CustomUser.objects.filter(rol=CustomUser.ROL_EMPLEADO, is_active=True)
+        # Obtener todos los empleados activos
+        empleados = CustomUser.objects.filter(is_active=True)
         registros = RegistroAsistencia.objects.filter(empleado__in=empleados)
 
         total_hoy = registros.filter(fecha=hoy).aggregate(
@@ -1137,7 +1137,7 @@ def actualizar_empleado_api(request, empleado_id: int):
         # Actualizar rol
         if 'rol' in datos:
             rol = str(datos.get('rol', '')).strip().lower()
-            if rol not in {CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR, CustomUser.ROL_EMPLEADO}:
+            if rol not in {CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR, CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH}:
                 return JsonResponse({
                     'success': False,
                     'message': 'Rol inválido'
