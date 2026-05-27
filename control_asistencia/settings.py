@@ -55,7 +55,7 @@ ROOT_URLCONF = 'control_asistencia.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'], # <-- Ponemos la ruta a tu carpeta global de plantillas
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

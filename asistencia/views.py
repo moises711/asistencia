@@ -11,6 +11,7 @@ from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.staticfiles import finders
 from django.http import HttpResponse, JsonResponse
+from pathlib import Path
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -57,9 +58,15 @@ def formatear_duracion(duracion: timedelta | None) -> str:
 
 
 def service_worker(request):
-    sw_path = finders.find("sw.js")
-    if sw_path:
-        with open(sw_path, "rb") as file_handle:
+    sw_path = Path(BASE_DIR) / "templates" / "sw.js"
+    if sw_path.exists():
+        response = HttpResponse(sw_path.read_bytes(), content_type="application/javascript")
+        response["Cache-Control"] = "no-cache"
+        return response
+
+    static_sw_path = finders.find("sw.js")
+    if static_sw_path:
+        with open(static_sw_path, "rb") as file_handle:
             response = HttpResponse(file_handle.read(), content_type="application/javascript")
             response["Cache-Control"] = "no-cache"
             return response
