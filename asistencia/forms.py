@@ -1,7 +1,38 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 
 from .models import Area, AusenciaProgramada, CustomUser, Horario, IpOficinaAutorizada, Justificacion, DiaFeriado, MetaHorasPracticante
+
+
+class LoginThrottleForm(AuthenticationForm):
+    max_intentos = 3
+    bloqueo_segundos = 15 * 60
+
+    def _cache_key(self):
+        username = (self.data.get("username") or "").strip().lower()
+        ip = "unknown"
+        if self.request is not None:
+            forwarded = self.request.META.get("HTTP_X_FORWARDED_FOR", "")
+            ip = forwarded.split(",")[0].strip() if forwarded else self.request.META.get("REMOTE_ADDR", "unknown")
+        return f"login-attempts:{username}:{ip}"
+
+    def clean(self):
+        key = self._cache_key()
+        attempts = cache.get(key, 0)
+        if attempts >= self.max_intentos:
+            raise ValidationError("Demasiados intentos fallidos. Intenta nuevamente en 15 minutos.")
+
+        try:
+            cleaned = super().clean()
+        except ValidationError:
+            attempts = cache.get(key, 0) + 1
+            cache.set(key, attempts, timeout=self.bloqueo_segundos)
+            raise
+
+        cache.delete(key)
+        return cleaned
 
 
 class JustificacionForm(forms.ModelForm):

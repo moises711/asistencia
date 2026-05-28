@@ -15,8 +15,10 @@ urlpatterns = [
     # Marcar asistencia
     path("marcar/<str:accion>/", views.marcar_evento, name="marcar_evento"),
     path("validar-gps/", views.validar_gps, name="validar_gps"),
+    path("validar-qr-oficina/", views.validar_qr_oficina, name="validar_qr_oficina"),
     path("capturar-gps/", views.capturar_gps_admin, name="capturar_gps_admin"),
     path("guardar-gps/", views.guardar_gps_admin, name="guardar_gps_admin"),
+    path("qr-oficina/descargar/", views.descargar_qr_oficina, name="descargar_qr_oficina"),
     
     # Escaneo QR para RRHH
     path("api/escanear-qr/", views.escanear_qr_empleado, name="escanear_qr_empleado"),

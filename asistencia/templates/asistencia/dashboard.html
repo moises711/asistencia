@@ -51,6 +51,18 @@
                     </div>
                 </button>
 
+                {% if config_gps %}
+                <button class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto" onclick="abrirModalActividadAntesQROficina()">
+                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V4a1 1 0 011-1h3M21 7V4a1 1 0 00-1-1h-3M3 17v3a1 1 0 001 1h3M21 17v3a1 1 0 01-1 1h-3M8 12h8"></path>
+                    </svg>
+                    <div class="text-left">
+                        <div class="text-sm text-zinc-200">Escanear QR oficina</div>
+                        <div class="text-xs text-zinc-400">Validar ubicación</div>
+                    </div>
+                </button>
+                {% endif %}
+
                 <a href="{% url 'password_change' %}" class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3V6a3 3 0 10-6 0v2c0 1.657 1.343 3 3 3zm-6 2a2 2 0 00-2 2v3h16v-3a2 2 0 00-2-2H6z"></path>
@@ -76,6 +88,49 @@
             <button onclick="window.print()" class="btn-neo px-4 py-2 rounded-md">Imprimir / Ampliar</button>
         </div>
     </div>
+
+    <div id="modal-actividad-pre-qr" class="hidden fixed inset-0 bg-black/70 z-[55] flex items-center justify-center p-4 backdrop-blur-sm" onclick="if(event.target === this) cerrarModalActividadAntesQROficina()">
+        <div class="bg-zinc-900 rounded-3xl w-full max-w-md border border-white/10 shadow-2xl p-6 relative overflow-hidden flex flex-col fade-in">
+            <button onclick="cerrarModalActividadAntesQROficina()" class="absolute top-4 right-4 text-zinc-400 hover:text-white p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <h3 class="text-xl font-bold text-zinc-100 mb-2 text-center">Antes de escanear el QR</h3>
+            <p class="text-sm text-zinc-400 text-center mb-4">Describe brevemente la actividad que realizaste y confirma para abrir la cámara.</p>
+
+            <label class="block text-sm text-zinc-300 mb-2">Actividad realizada</label>
+            <textarea id="actividad-pre-qr" rows="4" maxlength="500" class="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-400/60 outline-none resize-none" placeholder="Ej: Revisé reportes, atendí solicitudes, actualicé documentos..."></textarea>
+
+            <label class="mt-4 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 cursor-pointer select-none">
+                <input id="confirmacion-actividad-pre-qr" type="checkbox" class="mt-1 h-4 w-4 rounded border-zinc-500 bg-transparent text-cyan-400 focus:ring-cyan-400">
+                <span class="text-sm text-zinc-200">He terminado de describir mi actividad y deseo abrir la cámara.</span>
+            </label>
+
+            <div class="mt-4 flex gap-3">
+                <button onclick="continuarEscanerQROficina()" class="flex-1 btn-neo py-3 rounded-xl">Abrir cámara</button>
+                <button onclick="cerrarModalActividadAntesQROficina()" class="flex-1 btn-ghost py-3 rounded-xl">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    {% if config_gps %}
+    <div id="modal-qr-oficina" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onclick="if(event.target === this) cerrarEscanerQROficina()">
+        <div class="bg-zinc-900 rounded-3xl w-full max-w-md border border-white/10 shadow-2xl p-6 relative overflow-hidden flex flex-col fade-in">
+            <button onclick="cerrarEscanerQROficina()" class="absolute top-4 right-4 text-zinc-400 hover:text-white p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <h3 class="text-xl font-bold text-zinc-100 mb-2 text-center">Escanear QR de la oficina</h3>
+            <p class="text-sm text-zinc-400 text-center mb-4">Apunta la cámara al QR de la oficina para validar tu ubicación.</p>
+
+            <div id="qr-oficina-reader-container" class="rounded-2xl overflow-hidden bg-black/80 border-2 border-dashed border-zinc-700 relative w-full aspect-square flex items-center justify-center shadow-inner">
+                <div id="qr-oficina-reader" style="width: 100%; border: none;"></div>
+            </div>
+
+            <div id="qr-oficina-feedback" class="mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-transparent transition-all"></div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
         <div class="glass rounded-2xl p-6 space-y-4 fade-in">
@@ -437,6 +492,228 @@
         if (!modal) return;
         modal.classList.add('hidden');
     }
+
+    function abrirModalActividadAntesQROficina() {
+        const modal = document.getElementById('modal-actividad-pre-qr');
+        const actividad = document.getElementById('actividad-pre-qr');
+        const check = document.getElementById('confirmacion-actividad-pre-qr');
+        if (!modal || !actividad || !check) {
+            abrirEscanerQROficina();
+            return;
+        }
+
+        const actividadGuardada = document.getElementById('actividad-diaria');
+        if (actividadGuardada && actividadGuardada.value.trim()) {
+            actividad.value = actividadGuardada.value.trim();
+        }
+
+        check.checked = false;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        actividad.focus();
+    }
+
+    function cerrarModalActividadAntesQROficina() {
+        const modal = document.getElementById('modal-actividad-pre-qr');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function continuarEscanerQROficina() {
+        const actividad = document.getElementById('actividad-pre-qr');
+        const check = document.getElementById('confirmacion-actividad-pre-qr');
+        const actividadGuardada = document.getElementById('actividad-diaria');
+
+        const texto = actividad ? actividad.value.trim() : '';
+        if (!texto) {
+            window.showToast('Escribe tu actividad antes de continuar', 'error');
+            actividad?.focus();
+            return;
+        }
+
+        if (!check || !check.checked) {
+            window.showToast('Marca la casilla para abrir la cámara', 'error');
+            return;
+        }
+
+        if (actividadGuardada) {
+            actividadGuardada.value = texto;
+        }
+
+        cerrarModalActividadAntesQROficina();
+        abrirEscanerQROficina();
+    }
+
+    {% if config_gps %}
+    let qrOficinaScanner = null;
+    let qrOficinaActivo = false;
+    let ultimoQrOficina = null;
+    let ultimoQrOficinaAt = 0;
+
+    function showQrOficinaFeedback(message, type = 'success') {
+        const feedback = document.getElementById('qr-oficina-feedback');
+        if (!feedback) return;
+        if (type === 'success') {
+            feedback.className = 'mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+            feedback.textContent = `✔️ ${message}`;
+        } else if (type === 'error') {
+            feedback.className = 'mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-rose-500/30 bg-rose-500/10 text-rose-300';
+            feedback.textContent = `❌ ${message}`;
+        } else {
+            feedback.className = 'mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-amber-500/30 bg-amber-500/10 text-amber-300';
+            feedback.textContent = `⏳ ${message}`;
+        }
+    }
+
+    async function cargarLectorQR() {
+        if (typeof Html5Qrcode !== 'undefined') return;
+
+        const cargar = async (src) => new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.appendChild(script);
+        });
+
+        try {
+            await cargar('https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/html5-qrcode.min.js');
+        } catch (error) {
+            await cargar('{% static "asistencia/js/html5-qrcode.min.js" %}');
+        }
+    }
+
+    function obtenerUbicacionActual() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocalización no soportada'));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => resolve({
+                    latitud: position.coords.latitude,
+                    longitud: position.coords.longitude,
+                    precisión: position.coords.accuracy
+                }),
+                (error) => reject(error),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        });
+    }
+
+    async function abrirEscanerQROficina() {
+        const modal = document.getElementById('modal-qr-oficina');
+        const feedback = document.getElementById('qr-oficina-feedback');
+        if (!modal || !feedback) return;
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        showQrOficinaFeedback('Solicitando acceso a la cámara...', 'warning');
+
+        try {
+            await cargarLectorQR();
+
+            if (qrOficinaScanner) {
+                try { await qrOficinaScanner.stop(); } catch (error) {}
+                qrOficinaScanner.clear();
+                qrOficinaScanner = null;
+            }
+
+            qrOficinaActivo = true;
+            qrOficinaScanner = new Html5Qrcode('qr-oficina-reader');
+
+            const config = {
+                fps: 15,
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    const size = Math.max(150, Math.min(320, viewfinderWidth - 40, viewfinderHeight - 40));
+                    return { width: size, height: size };
+                },
+                aspectRatio: 1.333,
+                disableFlip: false,
+            };
+
+            const onScanSuccess = async (decodedText) => {
+                const codigo = (decodedText || '').trim();
+                const ahora = Date.now();
+                if (!codigo) return;
+                if (codigo === ultimoQrOficina && (ahora - ultimoQrOficinaAt) < 2500) return;
+
+                ultimoQrOficina = codigo;
+                ultimoQrOficinaAt = ahora;
+                showQrOficinaFeedback('Validando QR y ubicación...', 'warning');
+
+                try {
+                    const ubicacion = await obtenerUbicacionActual();
+                    const respuesta = await fetch('/validar-qr-oficina/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            codigo_qr: codigo,
+                            latitud: ubicacion.latitud,
+                            longitud: ubicacion.longitud,
+                            precisión: ubicacion.precisión
+                        })
+                    });
+
+                    const datos = await respuesta.json();
+                    if (respuesta.ok && datos.valido) {
+                        coordenadasGPS = ubicacion;
+                        gpsValido = true;
+                        actualizarEstadoBotonEntrada();
+                        const status = document.getElementById('gps-status');
+                        if (status) {
+                            status.textContent = `Validado por QR (${datos.distancia}m)`;
+                            status.className = 'text-xs text-emerald-400';
+                        }
+                        showQrOficinaFeedback(`Ubicación validada (${datos.distancia}m)`, 'success');
+                        window.showToast(datos.mensaje || 'QR de oficina validado', 'success');
+                        setTimeout(() => cerrarEscanerQROficina(), 1200);
+                    } else {
+                        showQrOficinaFeedback(datos.mensaje || 'No se pudo validar el QR de la oficina', 'error');
+                        window.showToast(datos.mensaje || 'No se pudo validar el QR de la oficina', 'error');
+                    }
+                } catch (error) {
+                    showQrOficinaFeedback('Error al obtener o validar la ubicación', 'error');
+                    window.showToast('Error al validar QR de oficina', 'error');
+                }
+            };
+
+            const onScanError = () => {};
+
+            await qrOficinaScanner.start({ facingMode: { ideal: 'environment' } }, config, onScanSuccess, onScanError);
+            showQrOficinaFeedback('Cámara lista, apunta al QR de la oficina', 'success');
+        } catch (error) {
+            showQrOficinaFeedback('No se pudo abrir la cámara', 'error');
+            window.showToast('No se pudo abrir la cámara para escanear el QR de oficina', 'error');
+        }
+    }
+
+    async function cerrarEscanerQROficina() {
+        const modal = document.getElementById('modal-qr-oficina');
+        if (qrOficinaScanner) {
+            try {
+                await qrOficinaScanner.stop();
+            } catch (error) {}
+            try {
+                qrOficinaScanner.clear();
+            } catch (error) {}
+            qrOficinaScanner = null;
+        }
+        qrOficinaActivo = false;
+        ultimoQrOficina = null;
+        ultimoQrOficinaAt = 0;
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+    {% endif %}
 
     document.addEventListener('DOMContentLoaded', () => {
         actualizarEstadoBotonEntrada();

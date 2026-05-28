@@ -18,6 +18,7 @@
                 <a href="{% url 'panel_control' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/panel-control/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Personal</a>
                 <a href="{% url 'horarios' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/horarios/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Horarios</a>
                 <a href="{% url 'areas' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/areas/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Areas</a>
+                <a href="{% url 'capturar_gps_admin' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/capturar-gps/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">GPS Oficina</a>
                 {% elif request.user.rol == 'rrhh' %}
                 <a href="{% url 'dashboard' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if request.path == '/dashboard/' %}bg-white/10 text-white border-white/20{% endif %}">Validar asistencia</a>
                 <a href="{% url 'panel_control' %}" class="btn-ghost w-full px-4 py-2.5 rounded-xl text-left {% if '/panel-control/' in request.path %}bg-white/10 text-white border-white/20{% endif %}">Personal</a>

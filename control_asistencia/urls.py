@@ -19,6 +19,11 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from asistencia import views as asistencia_views
 
+handler400 = 'asistencia.views.bad_request_view'
+handler403 = 'asistencia.views.permission_denied_view'
+handler404 = 'asistencia.views.page_not_found_view'
+handler500 = 'asistencia.views.server_error_view'
+
 urlpatterns = [
     path('', RedirectView.as_view(url='/login/', permanent=False)),
     path('admin/', admin.site.urls),

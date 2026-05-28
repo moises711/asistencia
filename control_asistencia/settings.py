@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +21,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@(k#&dxsn1jl3$z78&1yti7ktc7xnan2+t+k*5%#cybzcmyb2e'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-@(k#&dxsn1jl3$z78&1yti7ktc7xnan2+t+k*5%#cybzcmyb2e')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in {'1', 'true', 'yes', 'on'}
 
 ALLOWED_HOSTS = ['sonjindev.pythonanywhere.com', 'www.sonjindev.pythonanywhere.com', '127.0.0.1', 'localhost']
+CSRF_TRUSTED_ORIGINS = [
+    'https://sonjindev.pythonanywhere.com',
+    'https://www.sonjindev.pythonanywhere.com',
+]
 
 
 # Application definition
@@ -76,7 +81,7 @@ WSGI_APPLICATION = 'control_asistencia.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('DJANGO_DB_PATH') or BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -124,6 +129,20 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 DEFAULT_FROM_EMAIL = 'no-reply@control-asistencia.local'
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+
+FORCE_HTTPS = os.environ.get('DJANGO_FORCE_HTTPS', 'False').lower() in {'1', 'true', 'yes', 'on'}
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if FORCE_HTTPS else None
+SESSION_COOKIE_SECURE = FORCE_HTTPS
+CSRF_COOKIE_SECURE = FORCE_HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+SECURE_SSL_REDIRECT = FORCE_HTTPS
+SECURE_HSTS_SECONDS = 31536000 if FORCE_HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = FORCE_HTTPS
+SECURE_HSTS_PRELOAD = FORCE_HTTPS
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'same-origin'

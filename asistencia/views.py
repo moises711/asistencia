@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from io import BytesIO
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
+from django.core import signing
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
@@ -21,7 +23,9 @@ from django.db import IntegrityError
 from django.db.models import DurationField, Sum, Value
 from django.db.models.functions import Coalesce
 
-from .forms import AreaForm, AusenciaProgramadaForm, EmpleadoCreationForm, HorarioForm, IpOficinaAutorizadaForm, JustificacionForm, DiaFeriadoForm, MetaHorasPracticanteForm
+import qrcode
+
+from .forms import AreaForm, AusenciaProgramadaForm, EmpleadoCreationForm, HorarioForm, IpOficinaAutorizadaForm, JustificacionForm, DiaFeriadoForm, MetaHorasPracticanteForm, LoginThrottleForm
 from .models import (
     CustomUser,
     Horario,
@@ -36,6 +40,40 @@ from .models import (
     RecuperacionDia,
 )
 from .utils import calcular_horas_netas, obtener_ip_cliente, validar_ubicacion_gps
+
+
+OFICINA_QR_SALT = "oficina-qr-v1"
+
+
+def bad_request_view(request, exception):
+    return render(request, "400.html", status=400)
+
+
+def permission_denied_view(request, exception):
+    return render(request, "403.html", status=403)
+
+
+def page_not_found_view(request, exception):
+    return render(request, "404.html", status=404)
+
+
+def server_error_view(request):
+    return render(request, "500.html", status=500)
+
+
+def obtener_codigo_qr_oficina(config_gps: ConfiguracionGPS | None) -> str | None:
+    if not config_gps:
+        return None
+    return signing.dumps(
+        {
+            "config_id": config_gps.id,
+            "nombre": config_gps.nombre,
+            "latitud": str(config_gps.latitud),
+            "longitud": str(config_gps.longitud),
+            "radio": config_gps.radio_permitido_metros,
+        },
+        salt=OFICINA_QR_SALT,
+    )
 
 
 def obtener_redirect_por_rol(usuario: CustomUser) -> str:
@@ -145,6 +183,8 @@ def validar_dia_sin_permiso_ni_feriado(usuario: CustomUser, fecha) -> str | None
 
 
 class CustomLoginView(LoginView):
+    form_class = LoginThrottleForm
+
     def get_success_url(self):
         return reverse(obtener_redirect_por_rol(self.request.user))
 
@@ -201,6 +241,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         if not usuario.permite_remoto:
             ip_valida = IpOficinaAutorizada.objects.filter(ip_publica=ip_actual, activa=True).exists()
         horario = usuario.horario
+        config_gps = ConfiguracionGPS.obtener_configuracion_activa()
         context.update(
             {
                 "registro_hoy": registro_hoy,
@@ -211,6 +252,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 "dia_laborable": horario.es_laborable(hoy) if horario else None,
                 "requiere_gps": requiere_validacion_gps(usuario),
                 "limite_entrada": horario.hora_entrada_con_tolerancia() if horario else None,
+                "config_gps": config_gps,
             }
         )
         return context
@@ -624,6 +666,63 @@ def validar_gps(request):
 
 
 @login_required
+@require_POST
+def validar_qr_oficina(request):
+    """Valida que el QR escaneado corresponda a la oficina activa y que la ubicación esté dentro del radio permitido."""
+    import json
+
+    try:
+        datos = json.loads(request.body)
+        codigo_qr = str(datos.get('codigo_qr', '')).strip()
+        latitud_usuario = datos.get('latitud')
+        longitud_usuario = datos.get('longitud')
+        precision_usuario = datos.get('precisión')
+
+        if not codigo_qr:
+            return JsonResponse({'valido': False, 'mensaje': 'Código QR requerido'}, status=400)
+
+        config_gps = ConfiguracionGPS.obtener_configuracion_activa()
+        if not config_gps:
+            return JsonResponse({'valido': False, 'mensaje': 'No hay configuración GPS activa'}, status=404)
+
+        try:
+            payload = signing.loads(codigo_qr, salt=OFICINA_QR_SALT)
+        except signing.BadSignature:
+            return JsonResponse({'valido': False, 'mensaje': 'QR de oficina inválido o alterado'}, status=400)
+
+        if int(payload.get('config_id', 0)) != config_gps.id:
+            return JsonResponse({'valido': False, 'mensaje': 'El QR no corresponde a la oficina activa'}, status=400)
+
+        if not latitud_usuario or not longitud_usuario:
+            return JsonResponse({'valido': False, 'mensaje': 'Debes compartir tu ubicación GPS para validar el QR'}, status=400)
+
+        resultado = validar_ubicacion_gps(
+            latitud_usuario,
+            longitud_usuario,
+            config_gps.latitud,
+            config_gps.longitud,
+            config_gps.radio_permitido_metros,
+        )
+
+        return JsonResponse({
+            'valido': resultado['valido'],
+            'distancia': resultado['distancia'],
+            'mensaje': resultado['mensaje'],
+            'precision': precision_usuario,
+            'config': {
+                'nombre': config_gps.nombre,
+                'latitud': float(config_gps.latitud),
+                'longitud': float(config_gps.longitud),
+                'radio': config_gps.radio_permitido_metros,
+            },
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'valido': False, 'mensaje': 'Formato de datos inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'valido': False, 'mensaje': f'Error al validar QR de oficina: {str(e)}'}, status=500)
+
+
+@login_required
 def capturar_gps_admin(request):
     """
     Página para que el admin capture y guarde la ubicación GPS de la oficina
@@ -637,6 +736,7 @@ def capturar_gps_admin(request):
     
     context = {
         'config_gps': config_gps,
+        'codigo_qr_oficina': obtener_codigo_qr_oficina(config_gps),
         'csrf_token': request.META.get('CSRF_COOKIE', '')
     }
     
@@ -716,11 +816,41 @@ def guardar_gps_admin(request):
 
 
 @login_required
+def descargar_qr_oficina(request):
+    if request.user.rol != CustomUser.ROL_ADMIN and not request.user.is_staff and not request.user.is_superuser:
+        return HttpResponse('No autorizado', status=403)
+
+    config_gps = ConfiguracionGPS.obtener_configuracion_activa()
+    codigo_qr = obtener_codigo_qr_oficina(config_gps)
+    if not codigo_qr:
+        return HttpResponse('No hay configuración GPS activa', status=404)
+
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4,
+    )
+    qr.add_data(codigo_qr)
+    qr.make(fit=True)
+    imagen = qr.make_image(fill_color='black', back_color='white')
+
+    buffer = BytesIO()
+    imagen.save(buffer, format='PNG')
+    buffer.seek(0)
+
+    response = HttpResponse(buffer.getvalue(), content_type='image/png')
+    if request.GET.get('download') == '1':
+        response['Content-Disposition'] = 'attachment; filename="qr_oficina.png"'
+    return response
+
+
+@login_required
 @require_POST
 def marcar_evento(request, accion: str):
     usuario = request.user
     fecha = timezone.localdate()
-    ahora = timezone.now()
+    ahora = timezone.localtime(timezone.now())
     ip_empleado = obtener_ip_cliente(request)
     from django.conf import settings
 
@@ -870,7 +1000,7 @@ def escanear_qr_empleado(request):
         
         # Crear o obtener registro de hoy
         fecha = timezone.localdate()
-        ahora = timezone.now()
+        ahora = timezone.localtime(timezone.now())
         registro, creado = RegistroAsistencia.objects.get_or_create(
             empleado=empleado,
             fecha=fecha,

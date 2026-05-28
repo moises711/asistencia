@@ -80,7 +80,21 @@
 
                     <div>
                         <label class="block text-sm font-medium text-zinc-300 mb-2">Contraseña</label>
-                        {{ form.password }}
+                        <div class="relative">
+                            {{ form.password }}
+                            <button type="button" id="toggle-password-visibility" aria-label="Mostrar contraseña"
+                                    class="absolute inset-y-0 right-0 flex items-center px-4 text-zinc-400 hover:text-zinc-200 transition-colors">
+                                <svg id="password-eye-open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-5 w-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12s3.5-7.5 9.75-7.5 9.75 7.5 9.75 7.5-3.5 7.5-9.75 7.5S2.25 12 2.25 12Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                <svg id="password-eye-closed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-5 w-5 hidden">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 2.25 12s3.5 7.5 9.75 7.5c1.57 0 3.05-.3 4.39-.82" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.5 6.5 17.5 17.5" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 9.879a3 3 0 0 0 4.242 4.242" />
+                                </svg>
+                            </button>
+                        </div>
                         {% if form.password.errors %}
                             <div class="mt-1 text-xs text-rose-300">{{ form.password.errors|striptags }}</div>
                         {% endif %}
@@ -146,5 +160,29 @@
     body {
         overflow-x: hidden;
     }
+
+    #toggle-password-visibility {
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    #id_password {
+        padding-right: 3rem;
+    }
 </style>
+
+<script>
+    const passwordInput = document.getElementById('id_password');
+    const togglePasswordButton = document.getElementById('toggle-password-visibility');
+    const passwordEyeOpen = document.getElementById('password-eye-open');
+    const passwordEyeClosed = document.getElementById('password-eye-closed');
+
+    togglePasswordButton?.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        passwordEyeOpen.classList.toggle('hidden', !isPassword);
+        passwordEyeClosed.classList.toggle('hidden', isPassword);
+        togglePasswordButton.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+</script>
 {% endblock %}

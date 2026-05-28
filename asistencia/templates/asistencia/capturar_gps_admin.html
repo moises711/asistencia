@@ -145,6 +145,29 @@
                 {% endif %}
             </div>
 
+            <!-- QR de la oficina -->
+            <div class="glass rounded-2xl p-6 space-y-4">
+                <div class="font-semibold text-lg">QR de la Oficina</div>
+                {% if config_gps %}
+                    <p class="text-sm text-zinc-400">Descarga este código para imprimirlo y colocarlo en la entrada de la oficina.</p>
+                    <div class="rounded-2xl bg-white p-4 flex items-center justify-center">
+                        <img src="{% url 'descargar_qr_oficina' %}" alt="QR de la oficina" class="max-w-full h-auto rounded-lg" />
+                    </div>
+                    <div class="flex gap-3">
+                        <a href="{% url 'descargar_qr_oficina' %}?download=1" class="flex-1 btn-neo py-3 rounded-xl text-center">
+                            Descargar QR
+                        </a>
+                    </div>
+                    <div class="text-xs text-zinc-500">
+                        Los empleados podrán escanear este QR desde su panel para validar su ubicación.
+                    </div>
+                {% else %}
+                    <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-sm">
+                        ⚠️ Primero captura y guarda la ubicación de la oficina para generar el QR.
+                    </div>
+                {% endif %}
+            </div>
+
             <!-- Instrucciones -->
             <div class="glass rounded-2xl p-6 space-y-4 overflow-visible relative z-50">
                 <div class="font-semibold text-lg">📋 Instrucciones</div>
