@@ -728,15 +728,12 @@ def validar_gps(request):
 @login_required
 @require_POST
 def validar_qr_oficina(request):
-    """Valida que el QR escaneado corresponda a la oficina activa y que la ubicación esté dentro del radio permitido."""
+    """Valida que el QR escaneado corresponda a la oficina activa."""
     import json
 
     try:
         datos = json.loads(request.body)
         codigo_qr = str(datos.get('codigo_qr', '')).strip()
-        latitud_usuario = datos.get('latitud')
-        longitud_usuario = datos.get('longitud')
-        precision_usuario = datos.get('precisión')
 
         if not codigo_qr:
             return JsonResponse({'valido': False, 'mensaje': 'Código QR requerido'}, status=400)
@@ -753,22 +750,9 @@ def validar_qr_oficina(request):
         if int(payload.get('config_id', 0)) != config_gps.id:
             return JsonResponse({'valido': False, 'mensaje': 'El QR no corresponde a la oficina activa'}, status=400)
 
-        if latitud_usuario in (None, "") or longitud_usuario in (None, ""):
-            return JsonResponse({'valido': False, 'mensaje': 'Debes compartir tu ubicación GPS para validar el QR'}, status=400)
-
-        resultado = validar_ubicacion_gps(
-            latitud_usuario,
-            longitud_usuario,
-            config_gps.latitud,
-            config_gps.longitud,
-            config_gps.radio_permitido_metros,
-        )
-
         return JsonResponse({
-            'valido': resultado['valido'],
-            'distancia': resultado['distancia'],
-            'mensaje': resultado['mensaje'],
-            'precision': precision_usuario,
+            'valido': True,
+            'mensaje': 'QR de oficina válido',
             'config': {
                 'nombre': config_gps.nombre,
                 'latitud': float(config_gps.latitud),
@@ -949,11 +933,15 @@ def marcar_evento(request, accion: str):
     tipo_marcacion = request.POST.get("tipo_marcacion")
 
     if accion in ("entrada",):
-        for validar in (
+        validadores = [
             validar_dia_sin_permiso_ni_feriado,
             validar_horario_para_marcacion,
-            lambda u, f: validar_gps_para_marcacion(u, latitud, longitud),
-        ):
+        ]
+        # Si la marcación viene por QR de oficina, no exigir validación GPS adicional.
+        if tipo_marcacion != 'qr':
+            validadores.append(lambda u, f: validar_gps_para_marcacion(u, latitud, longitud))
+
+        for validar in validadores:
             mensaje = validar(usuario, fecha)
             if mensaje:
                 return JsonResponse({"status": "error", "message": mensaje}, status=400)

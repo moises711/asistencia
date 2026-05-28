@@ -586,14 +586,14 @@
         }
     }
 
-    async function registrarMarcacionDesdeQR(accion, ubicacion) {
+    async function registrarMarcacionDesdeQR(accion, ubicacion = null) {
         const formData = new FormData();
 
         if (accion === 'salida' && qrOficinaActividad) {
             formData.append('actividad', qrOficinaActividad);
         }
 
-        if (ubicacion.latitud && ubicacion.longitud) {
+        if (ubicacion && ubicacion.latitud && ubicacion.longitud) {
             formData.append('latitud', ubicacion.latitud);
             formData.append('longitud', ubicacion.longitud);
             formData.append('precisión', ubicacion.precisión);
@@ -725,10 +725,9 @@
 
                 ultimoQrOficina = codigo;
                 ultimoQrOficinaAt = ahora;
-                showQrOficinaFeedback('Validando QR y ubicación...', 'warning');
+                showQrOficinaFeedback('Validando QR de oficina...', 'warning');
 
                 try {
-                    const ubicacion = await obtenerUbicacionActual();
                     const respuesta = await fetch('/validar-qr-oficina/', {
                         method: 'POST',
                         headers: {
@@ -736,31 +735,27 @@
                             'X-CSRFToken': '{{ csrf_token }}'
                         },
                         body: JSON.stringify({
-                            codigo_qr: codigo,
-                            latitud: ubicacion.latitud,
-                            longitud: ubicacion.longitud,
-                            precisión: ubicacion.precisión
+                            codigo_qr: codigo
                         })
                     });
 
                     const datos = await respuesta.json();
                     if (respuesta.ok && datos.valido) {
-                        coordenadasGPS = ubicacion;
                         gpsValido = true;
                         actualizarEstadoBotonEntrada();
                         const status = document.getElementById('gps-status');
                         if (status) {
-                            status.textContent = `Validado por QR (${datos.distancia}m)`;
+                            status.textContent = 'Validado por QR';
                             status.className = 'text-xs text-emerald-400';
                         }
-                        showQrOficinaFeedback(`Ubicación validada (${datos.distancia}m)`, 'success');
+                        showQrOficinaFeedback('QR de oficina validado', 'success');
                         window.showToast(datos.mensaje || 'QR de oficina validado', 'success');
 
                         try {
                             if (qrOficinaModo === 'salida') {
-                                await registrarMarcacionDesdeQR('salida', ubicacion);
+                                await registrarMarcacionDesdeQR('salida');
                             } else {
-                                await registrarMarcacionDesdeQR('entrada', ubicacion);
+                                await registrarMarcacionDesdeQR('entrada');
                             }
                         } finally {
                             setTimeout(() => cerrarEscanerQROficina(), 500);
@@ -770,7 +765,7 @@
                         window.showToast(datos.mensaje || 'No se pudo validar el QR de la oficina', 'error');
                     }
                 } catch (error) {
-                    showQrOficinaFeedback('Error al obtener o validar la ubicación', 'error');
+                    showQrOficinaFeedback('Error al validar QR de oficina', 'error');
                     window.showToast('Error al validar QR de oficina', 'error');
                 }
             };
