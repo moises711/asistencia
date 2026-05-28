@@ -52,6 +52,9 @@ urlpatterns = [
     # Actividades de empleados (Admin)
     path("actividades/", views.ActividadesEmpleadosView.as_view(), name="actividades_empleados"),
 
+    # Credenciales de acceso del usuario autenticado
+    path("credenciales/", views.CredencialesAccesoView.as_view(), name="credenciales_acceso"),
+
     # Cambio de contraseña (usuario actual)
     path('password/change/', views.RoleAwarePasswordChangeView.as_view(template_name='asistencia/password_change.html'), name='password_change'),
     path('password/change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='asistencia/password_change_done.html'), name='password_change_done'),

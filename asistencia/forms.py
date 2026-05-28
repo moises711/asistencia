@@ -35,6 +35,36 @@ class LoginThrottleForm(AuthenticationForm):
         return cleaned
 
 
+class CredencialesAccesoForm(forms.ModelForm):
+    current_password = forms.CharField(
+        label="Contraseña actual",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+        help_text="Necesaria para confirmar cambios en tus credenciales.",
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = ["username", "email"]
+        widgets = {
+            "username": forms.TextInput(attrs={"autocomplete": "username"}),
+            "email": forms.EmailInput(attrs={"autocomplete": "email"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({
+                "class": "w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition",
+            })
+
+    def clean_current_password(self):
+        current_password = self.cleaned_data.get("current_password")
+        if not self.instance.check_password(current_password):
+            raise ValidationError("La contraseña actual no es correcta.")
+        return current_password
+
+
 class JustificacionForm(forms.ModelForm):
     class Meta:
         model = Justificacion

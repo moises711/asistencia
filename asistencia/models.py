@@ -37,9 +37,18 @@ class Area(models.Model):
 
 class Horario(models.Model):
     nombre = models.CharField(max_length=100, help_text="Ej. Turno Mañana")
+    TIPO_HORARIO_CHOICES = [
+        ('fijo', 'Fijo'),
+        ('flexible', 'Flexible'),
+        ('rotativo', 'Rotativo'),
+        ('nocturno', 'Nocturno'),
+    ]
+    tipo_horario = models.CharField(max_length=20, choices=TIPO_HORARIO_CHOICES, default='fijo')
     hora_entrada = models.TimeField()
     hora_salida = models.TimeField()
     tolerancia_minutos = models.IntegerField(default=0)
+    tardanza_maxima_minutos = models.IntegerField(default=30, help_text="Minutos máximos de tardanza permitidos antes de considerarse falta")
+    permite_entrada_tardia = models.BooleanField(default=False, help_text="Si permite marcar entrada después de la tardanza máxima")
     
     # Días laborables
     lunes = models.BooleanField(default=True)
@@ -167,6 +176,13 @@ class RegistroAsistencia(models.Model):
         (ESTADO_RECUPERACION, "Recuperación"),
     )
 
+    TIPO_MARCACION_CHOICES = (
+        ('gps', 'GPS'),
+        ('qr', 'QR Oficina'),
+        ('manual', 'Manual / Red Local'),
+        ('rrhh', 'Manual RRHH'),
+    )
+
     empleado = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="registros")
     fecha = models.DateField()
     hora_entrada = models.DateTimeField(null=True, blank=True)
@@ -174,6 +190,8 @@ class RegistroAsistencia(models.Model):
     inicio_almuerzo = models.DateTimeField(null=True, blank=True)
     fin_almuerzo = models.DateTimeField(null=True, blank=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default=ESTADO_A_TIEMPO)
+    tipo_entrada = models.CharField(max_length=20, choices=TIPO_MARCACION_CHOICES, default='manual')
+    tipo_salida = models.CharField(max_length=20, choices=TIPO_MARCACION_CHOICES, null=True, blank=True)
     ip_registro = models.GenericIPAddressField(protocol="IPv4", null=True, blank=True)
     # Campos para validación GPS
     latitud_entrada = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -183,6 +201,8 @@ class RegistroAsistencia(models.Model):
     precisión_entrada = models.FloatField(null=True, blank=True, help_text="Precisión GPS en metros")
     precisión_salida = models.FloatField(null=True, blank=True, help_text="Precisión GPS en metros")
     horas_netas_trabajadas = models.DurationField(null=True, blank=True)
+    minutos_tarde = models.IntegerField(default=0, help_text="Minutos de tardanza calculados")
+    minutos_temprano = models.IntegerField(default=0, help_text="Minutos que llegó temprano (antes de la hora de entrada)")
     actividad_diaria = models.TextField(null=True, blank=True, help_text="Resumen de lo que hizo el practicante hoy.")
 
     class Meta:

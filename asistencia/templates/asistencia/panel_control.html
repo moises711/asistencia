@@ -48,7 +48,7 @@
 
         <div class="text-base font-semibold text-zinc-200 mb-4">Activo</div>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto hidden md:block">
             <table class="w-full text-sm text-left">
                 <thead>
                     <tr class="text-zinc-400 font-semibold uppercase text-xs border-b border-white/10">
@@ -95,7 +95,7 @@
                                 </span>
                             {% elif empleado.estado_hoy == "Tardanza" %}
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 text-xs font-medium border border-amber-500/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> {{ empleado.estado_hoy }}
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> {{ empleado.estado_hoy }}{% if empleado.registro_hoy.minutos_tarde %} ({{ empleado.registro_hoy.minutos_tarde }} min){% endif %}
                                 </span>
                             {% elif empleado.estado_hoy == "Falta" %}
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-300 text-xs font-medium border border-rose-500/20">
@@ -134,12 +134,72 @@
                 </tbody>
             </table>
         </div>
+        
+        <!-- Mobile Cards View -->
+        <div class="grid grid-cols-1 gap-4 md:hidden" id="personal-cards">
+            {% for empleado in empleados %}
+            {% if request.user.rol == 'admin' or empleado.rol == 'empleado' or empleado.rol == 'pphh' %}
+            <div class="glass p-4 rounded-xl space-y-3" data-rol="{{ empleado.rol }}">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold uppercase">
+                            {% if empleado.first_name %}{{ empleado.first_name|first|upper }}{% else %}{{ empleado.username|first|upper }}{% endif %}
+                        </div>
+                        <div>
+                            <div class="font-bold text-zinc-200 capitalize">{{ empleado.get_full_name|default:empleado.username }}</div>
+                            <div class="text-[11px] text-zinc-400">{{ empleado.dni }} • {{ empleado.get_rol_display }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 text-xs text-zinc-300">
+                    <div>
+                        <span class="text-zinc-500 block mb-0.5">Departamento</span>
+                        {% if empleado.area %}{{ empleado.area.nombre }}{% else %}<span class="italic text-zinc-500">Sin área</span>{% endif %}
+                    </div>
+                    <div>
+                        <span class="text-zinc-500 block mb-0.5">Horario</span>
+                        {% if empleado.horario %}{{ empleado.horario.nombre }}{% else %}<span class="italic text-zinc-500">Sin horario</span>{% endif %}
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between pt-2 border-t border-white/10">
+                    <div>
+                        {% if empleado.estado_hoy == "Presente" or empleado.estado_hoy == "Activo" %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> {{ empleado.estado_hoy }}
+                            </span>
+                        {% elif empleado.estado_hoy == "Tardanza" %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 text-xs font-medium border border-amber-500/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> {{ empleado.estado_hoy }}{% if empleado.registro_hoy.minutos_tarde %} ({{ empleado.registro_hoy.minutos_tarde }} min){% endif %}
+                            </span>
+                        {% elif empleado.estado_hoy == "Falta" %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-300 text-xs font-medium border border-rose-500/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> {{ empleado.estado_hoy }}
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 text-zinc-400 text-xs font-medium border border-zinc-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span> {{ empleado.estado_hoy }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="abrirModalPersonal('editar', {{ empleado.id }}, '{{ empleado.first_name|escapejs }}', '{{ empleado.last_name|escapejs }}', '{{ empleado.username|escapejs }}', '{{ empleado.email|escapejs }}', '{% if empleado.area %}{{ empleado.area.id }}{% else %}{% endif %}', '{% if empleado.horario %}{{ empleado.horario.id }}{% else %}{% endif %}', '{{ empleado.rol|escapejs }}', '{{ empleado.dni|escapejs }}', {% if empleado.permite_remoto %}true{% else %}false{% endif %})" 
+                            class="text-indigo-400 p-2 bg-indigo-500/10 rounded-lg hover:bg-indigo-500/20 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
     </div>
 </div>
 
 <div id="usuario-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
     <div id="usuario-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="hideUsuarioModal()"></div>
-    <div class="relative w-full max-w-3xl glass rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl">
+    <div class="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto overscroll-contain glass rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl">
         
         <div class="flex items-start justify-between gap-4">
             <div>
@@ -474,12 +534,21 @@
 
     function actualizarFiltrosPersonal(filtro) {
         const filas = document.querySelectorAll('#personal-rows tr[data-rol]');
+        const cards = document.querySelectorAll('#personal-cards div[data-rol]');
         filas.forEach((fila) => {
             const rol = fila.dataset.rol;
             if (filtro === 'all') {
                 fila.hidden = false;
             } else {
                 fila.hidden = rol !== filtro;
+            }
+        });
+        cards.forEach((card) => {
+            const rol = card.dataset.rol;
+            if (filtro === 'all') {
+                card.style.display = 'block';
+            } else {
+                card.style.display = rol === filtro ? 'block' : 'none';
             }
         });
     }

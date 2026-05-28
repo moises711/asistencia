@@ -53,7 +53,7 @@
                 </button>
 
                 {% if config_gps %}
-                <button class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto" onclick="abrirModalActividadAntesQROficina()">
+                <button class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto" onclick="abrirFlujoQROficina()">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V4a1 1 0 011-1h3M21 7V4a1 1 0 00-1-1h-3M3 17v3a1 1 0 001 1h3M21 17v3a1 1 0 01-1 1h-3M8 12h8"></path>
                     </svg>
@@ -64,13 +64,13 @@
                 </button>
                 {% endif %}
 
-                <a href="{% url 'password_change' %}" class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto">
+                <a href="{% url 'credenciales_acceso' %}" class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3V6a3 3 0 10-6 0v2c0 1.657 1.343 3 3 3zm-6 2a2 2 0 00-2 2v3h16v-3a2 2 0 00-2-2H6z"></path>
                     </svg>
                     <div class="text-left">
-                        <div class="text-sm text-zinc-200">Cambiar contraseña</div>
-                        <div class="text-xs text-zinc-400">Seguridad de acceso</div>
+                        <div class="text-sm text-zinc-200">Mis credenciales</div>
+                        <div class="text-xs text-zinc-400">Usuario, correo y contraseña</div>
                     </div>
                 </a>
             </div>
@@ -96,8 +96,8 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
 
-            <h3 class="text-xl font-bold text-zinc-100 mb-2 text-center">Antes de escanear el QR</h3>
-            <p class="text-sm text-zinc-400 text-center mb-4">Describe brevemente la actividad que realizaste y confirma para abrir la cámara.</p>
+            <h3 id="qr-oficina-activity-title" class="text-xl font-bold text-zinc-100 mb-2 text-center">Antes de escanear el QR</h3>
+            <p id="qr-oficina-activity-help" class="text-sm text-zinc-400 text-center mb-4">Describe brevemente la actividad que realizaste y confirma para abrir la cámara.</p>
 
             <label class="block text-sm text-zinc-300 mb-2">Actividad realizada</label>
             <textarea id="actividad-pre-qr" rows="4" maxlength="500" class="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-400/60 outline-none resize-none" placeholder="Ej: Revisé reportes, atendí solicitudes, actualicé documentos..."></textarea>
@@ -121,14 +121,19 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
 
-            <h3 class="text-xl font-bold text-zinc-100 mb-2 text-center">Escanear QR de la oficina</h3>
-            <p class="text-sm text-zinc-400 text-center mb-4">Apunta la cámara al QR de la oficina para validar tu ubicación.</p>
+            <h3 id="qr-oficina-title" class="text-xl font-bold text-zinc-100 mb-2 text-center">Escanear QR de la oficina</h3>
+            <p id="qr-oficina-subtitle" class="text-sm text-zinc-400 text-center mb-4">Apunta la cámara al QR de la oficina para validar tu ubicación.</p>
 
             <div id="qr-oficina-reader-container" class="rounded-2xl overflow-hidden bg-black/80 border-2 border-dashed border-zinc-700 relative w-full aspect-square flex items-center justify-center shadow-inner">
                 <div id="qr-oficina-reader" style="width: 100%; border: none;"></div>
             </div>
 
             <div id="qr-oficina-feedback" class="mt-4 text-center min-h-[48px] flex items-center justify-center text-sm font-semibold rounded-xl p-3 border border-transparent transition-all"></div>
+
+            <div class="mt-4 flex gap-3">
+                <button onclick="volverDesdeQROficina()" class="flex-1 btn-ghost py-3 rounded-xl">Volver</button>
+                <button onclick="cerrarEscanerQROficina()" class="flex-1 btn-neo py-3 rounded-xl">Cerrar</button>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -151,6 +156,21 @@
                     {% elif requiere_gps %}
                     <div class="text-zinc-400 text-xs mt-2">Debes compartir ubicación GPS antes de marcar entrada.</div>
                     {% endif %}
+                    
+                    <ul class="text-xs space-y-1 mt-3 border-t border-white/10 pt-2">
+                        <li class="flex items-center gap-2 {% if dia_laborable %}text-emerald-400{% else %}text-amber-400{% endif %}">
+                            <span class="w-4 flex justify-center">{% if dia_laborable %}✅{% else %}⚠️{% endif %}</span> 
+                            <span>Día laborable</span>
+                        </li>
+                        <li class="flex items-center gap-2 {% if not requiere_gps %}text-emerald-400{% else %}text-zinc-400{% endif %}" id="checklist-gps">
+                            <span class="w-4 flex justify-center">{% if not requiere_gps %}✅{% else %}⏳{% endif %}</span> 
+                            <span>Validación GPS / Ubicación</span>
+                        </li>
+                        <li class="flex items-center gap-2 {% if ip_valida %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                            <span class="w-4 flex justify-center">{% if ip_valida %}✅{% else %}❌{% endif %}</span> 
+                            <span>Red / IP Autorizada</span>
+                        </li>
+                    </ul>
                 </div>
                 {% else %}
                 <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
@@ -175,8 +195,9 @@
                 <div class="{% if not registro_hoy.hora_entrada or registro_hoy.hora_salida %}hidden{% endif %}" id="actividad-section">
                     <label class="block text-sm text-zinc-300 mb-2">Resumen de Actividades del Día (Obligatorio para salir)</label>
                     <textarea id="actividad-diaria"
-                        class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 placeholder-zinc-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all"
+                        class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 placeholder-zinc-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all resize-none"
                         rows="3"
+                        oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
                         placeholder="Ej. Terminé el diseño de banners, programé la vista de reportes, revisé feedback del cliente..."></textarea>
                 </div>
                 {% endif %}
@@ -201,6 +222,9 @@
             <div class="text-xs text-zinc-400 border-b border-white/10 pb-3 mb-1">
                 Turno: {{ horario.hora_entrada|time:"H:i" }} – {{ horario.hora_salida|time:"H:i" }}
                 (tolerancia {{ horario.tolerancia_minutos }} min)
+                {% if minutos_para_tardanza %}
+                <br><span class="text-emerald-400 mt-1 inline-block">Te faltan {{ minutos_para_tardanza }} minutos para que se considere tardanza.</span>
+                {% endif %}
             </div>
             {% endif %}
             {% if registro_hoy %}
@@ -215,7 +239,12 @@
                 </div>
                 <div class="flex items-center justify-between border-b border-white/10 pb-2">
                     <span class="text-zinc-400">Estado</span>
-                    <span>{{ registro_hoy.get_estado_display }}</span>
+                    <span>
+                        {{ registro_hoy.get_estado_display }}
+                        {% if registro_hoy.estado == 'tardanza' and registro_hoy.minutos_tarde %}
+                        <span class="text-amber-400 text-xs ml-1">({{ registro_hoy.minutos_tarde }} min tarde)</span>
+                        {% endif %}
+                    </span>
                 </div>
                 {% if registro_hoy.actividad_diaria %}
                 <div class="pt-2">
@@ -227,6 +256,17 @@
             {% else %}
             <div class="text-sm text-zinc-400">Sin registros hoy.</div>
             {% endif %}
+            
+            <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-3">
+                <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                    <div class="text-xs text-amber-200/70 mb-1">Tardanzas acumuladas</div>
+                    <div class="text-lg font-bold text-amber-300">{{ total_tarde }} <span class="text-xs font-normal">min</span></div>
+                </div>
+                <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                    <div class="text-xs text-emerald-200/70 mb-1">Saldo a favor (temprano)</div>
+                    <div class="text-lg font-bold text-emerald-300">{{ total_temprano }} <span class="text-xs font-normal">min</span></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -250,12 +290,16 @@
 
 <script>
     const REQUIERE_GPS = {{ requiere_gps|yesno:"true,false" }};
+    const TIENE_ENTRADA_HOY = {% if registro_hoy and registro_hoy.hora_entrada %}true{% else %}false{% endif %};
+    const TIENE_SALIDA_HOY = {% if registro_hoy and registro_hoy.hora_salida %}true{% else %}false{% endif %};
     {% if request.user.rol == 'pphh' %}
     const REQUIERE_ACTIVIDAD = false;
     {% else %}
     const REQUIERE_ACTIVIDAD = true;
     {% endif %}
     let gpsValido = !REQUIERE_GPS;
+    let qrOficinaModo = null;
+    let qrOficinaActividad = '';
 
     function actualizarEstadoBotonEntrada() {
         const btn = document.getElementById('btn-entrada');
@@ -293,8 +337,8 @@
             // Validar que textarea tenga contenido para salida
             if (accion === 'salida' && REQUIERE_ACTIVIDAD) {
                 const actividad = document.getElementById('actividad-diaria').value.trim();
-                if (!actividad) {
-                    window.showToast('Debes describir tus actividades para marcar salida', 'error');
+                if (!actividad || actividad.length < 10) {
+                    window.showToast('Debes describir tus actividades (mín. 10 caracteres) para marcar salida', 'error');
                     return;
                 }
             }
@@ -442,44 +486,7 @@
         );
     }
 
-    async function abrirEscanerQR() {
-        if (REQUIERE_GPS && !gpsValido) {
-            window.showToast('Primero comparte tu ubicación GPS', 'error');
-            solicitarGPS();
-            return;
-        }
-        window.showToast('Abriendo la cámara...', 'success');
-
-        // Simulación: Esperar 1.5s simulando el escaneo y luego enviar el código válido
-        setTimeout(async () => {
-            try {
-                const formData = new FormData();
-                formData.append('codigo', 'ASISTENCIA_DEMO');
-                if (coordenadasGPS.latitud && coordenadasGPS.longitud) {
-                    formData.append('latitud', coordenadasGPS.latitud);
-                    formData.append('longitud', coordenadasGPS.longitud);
-                    formData.append('precisión', coordenadasGPS.precisión);
-                }
-
-                const respuesta = await fetch(`/marcar/qr/`, {
-                    method: "POST",
-                    body: formData,
-                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
-                });
-
-                const data = await respuesta.json();
-
-                if (respuesta.ok) {
-                    window.showToast('QR Escaneado con éxito', 'success');
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    window.showToast(data.message, 'error');
-                }
-            } catch (error) {
-                window.showToast('Error de conexión', 'error');
-            }
-        }, 1500);
-    }
+    // Simulación de escaner eliminada. Ahora se usa el QR de Oficina exclusivamente.
 
     // Mostrar modal con el QR del usuario
     function mostrarMiQR() {
@@ -494,14 +501,36 @@
         modal.classList.add('hidden');
     }
 
+    function abrirFlujoQROficina() {
+        if (TIENE_SALIDA_HOY) {
+            window.showToast('Ya registraste la salida de hoy', 'error');
+            return;
+        }
+
+        if (!TIENE_ENTRADA_HOY) {
+            qrOficinaModo = 'entrada';
+            qrOficinaActividad = '';
+            abrirEscanerQROficina();
+            return;
+        }
+
+        qrOficinaModo = 'salida';
+        abrirModalActividadAntesQROficina();
+    }
+
     function abrirModalActividadAntesQROficina() {
         const modal = document.getElementById('modal-actividad-pre-qr');
         const actividad = document.getElementById('actividad-pre-qr');
         const check = document.getElementById('confirmacion-actividad-pre-qr');
+        const titulo = document.getElementById('qr-oficina-activity-title');
+        const ayuda = document.getElementById('qr-oficina-activity-help');
         if (!modal || !actividad || !check) {
             abrirEscanerQROficina();
             return;
         }
+
+        if (titulo) titulo.textContent = 'Antes de salir';
+        if (ayuda) ayuda.textContent = 'Describe la actividad que realizaste y confirma para abrir la cámara de salida.';
 
         const actividadGuardada = document.getElementById('actividad-diaria');
         if (actividadGuardada && actividadGuardada.value.trim()) {
@@ -542,8 +571,49 @@
             actividadGuardada.value = texto;
         }
 
+        qrOficinaActividad = texto;
+
         cerrarModalActividadAntesQROficina();
+        qrOficinaModo = 'salida';
         abrirEscanerQROficina();
+    }
+
+    function volverDesdeQROficina() {
+        const regresarAActividad = qrOficinaModo === 'salida' && !TIENE_SALIDA_HOY;
+        cerrarEscanerQROficina();
+        if (regresarAActividad) {
+            abrirModalActividadAntesQROficina();
+        }
+    }
+
+    async function registrarMarcacionDesdeQR(accion, ubicacion) {
+        const formData = new FormData();
+
+        if (accion === 'salida' && qrOficinaActividad) {
+            formData.append('actividad', qrOficinaActividad);
+        }
+
+        if (ubicacion.latitud && ubicacion.longitud) {
+            formData.append('latitud', ubicacion.latitud);
+            formData.append('longitud', ubicacion.longitud);
+            formData.append('precisión', ubicacion.precisión);
+        }
+        formData.append('tipo_marcacion', 'qr');
+
+        const respuesta = await fetch(`/marcar/${accion}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        });
+
+        const data = await respuesta.json();
+        if (respuesta.ok) {
+            window.showToast(data.message || `Registro exitoso: ${accion}`, 'success');
+            setTimeout(() => window.location.reload(), 1200);
+            return;
+        }
+
+        throw new Error(data.message || 'No se pudo registrar la asistencia');
     }
 
     {% if config_gps %}
@@ -608,7 +678,18 @@
     async function abrirEscanerQROficina() {
         const modal = document.getElementById('modal-qr-oficina');
         const feedback = document.getElementById('qr-oficina-feedback');
+        const titulo = document.getElementById('qr-oficina-title');
+        const subtitulo = document.getElementById('qr-oficina-subtitle');
         if (!modal || !feedback) return;
+
+        if (titulo) {
+            titulo.textContent = qrOficinaModo === 'salida' ? 'Escanear QR de la oficina para salir' : 'Escanear QR de la oficina para entrada';
+        }
+        if (subtitulo) {
+            subtitulo.textContent = qrOficinaModo === 'salida'
+                ? 'Escanea el QR y la salida se registrará con tu actividad.'
+                : 'Escanea el QR y la entrada se registrará automáticamente.';
+        }
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -674,7 +755,16 @@
                         }
                         showQrOficinaFeedback(`Ubicación validada (${datos.distancia}m)`, 'success');
                         window.showToast(datos.mensaje || 'QR de oficina validado', 'success');
-                        setTimeout(() => cerrarEscanerQROficina(), 1200);
+
+                        try {
+                            if (qrOficinaModo === 'salida') {
+                                await registrarMarcacionDesdeQR('salida', ubicacion);
+                            } else {
+                                await registrarMarcacionDesdeQR('entrada', ubicacion);
+                            }
+                        } finally {
+                            setTimeout(() => cerrarEscanerQROficina(), 500);
+                        }
                     } else {
                         showQrOficinaFeedback(datos.mensaje || 'No se pudo validar el QR de la oficina', 'error');
                         window.showToast(datos.mensaje || 'No se pudo validar el QR de la oficina', 'error');
@@ -687,7 +777,7 @@
 
             const onScanError = () => {};
 
-            await qrOficinaScanner.start({ facingMode: { ideal: 'environment' } }, config, onScanSuccess, onScanError);
+            await qrOficinaScanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanError);
             showQrOficinaFeedback('Cámara lista, apunta al QR de la oficina', 'success');
         } catch (error) {
             showQrOficinaFeedback('No se pudo abrir la cámara', 'error');
@@ -709,6 +799,7 @@
         qrOficinaActivo = false;
         ultimoQrOficina = null;
         ultimoQrOficinaAt = 0;
+        qrOficinaModo = qrOficinaModo || null;
         if (modal) {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
@@ -721,6 +812,10 @@
         const btnEntrada = document.getElementById('btn-entrada');
         if (REQUIERE_GPS && btnEntrada && !btnEntrada.classList.contains('hidden')) {
             solicitarGPS();
+        }
+
+        if (TIENE_ENTRADA_HOY && !TIENE_SALIDA_HOY) {
+            qrOficinaModo = 'salida';
         }
     });
 </script>

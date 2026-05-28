@@ -4,8 +4,10 @@ import json
 from datetime import timedelta
 from io import BytesIO
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.core import signing
 from django.core.exceptions import ValidationError
@@ -17,6 +19,7 @@ from pathlib import Path
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.contrib.auth import update_session_auth_hash
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, FormView, TemplateView
 from django.db import IntegrityError
@@ -25,7 +28,7 @@ from django.db.models.functions import Coalesce
 
 import qrcode
 
-from .forms import AreaForm, AusenciaProgramadaForm, EmpleadoCreationForm, HorarioForm, IpOficinaAutorizadaForm, JustificacionForm, DiaFeriadoForm, MetaHorasPracticanteForm, LoginThrottleForm
+from .forms import AreaForm, AusenciaProgramadaForm, CredencialesAccesoForm, EmpleadoCreationForm, HorarioForm, IpOficinaAutorizadaForm, JustificacionForm, DiaFeriadoForm, MetaHorasPracticanteForm, LoginThrottleForm
 from .models import (
     CustomUser,
     Horario,
@@ -131,7 +134,7 @@ def validar_gps_para_marcacion(usuario: CustomUser, latitud, longitud) -> str | 
     """Devuelve mensaje de error o None si la ubicación es válida."""
     if not requiere_validacion_gps(usuario):
         return None
-    if not latitud or not longitud:
+    if latitud in (None, "") or longitud in (None, ""):
         return "Debes compartir tu ubicación antes de marcar entrada."
     config_gps = ConfiguracionGPS.obtener_configuracion_activa()
     if not config_gps:
@@ -194,6 +197,38 @@ class RoleAwarePasswordChangeView(PasswordChangeView):
         return reverse(obtener_redirect_por_rol(self.request.user))
 
 
+class CredencialesAccesoView(LoginRequiredMixin, TemplateView):
+    template_name = "asistencia/credenciales_acceso.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.setdefault("credenciales_form", CredencialesAccesoForm(instance=self.request.user))
+        context.setdefault("password_form", PasswordChangeForm(user=self.request.user))
+        return context
+
+    def post(self, request, *args, **kwargs):
+        form_type = request.POST.get("form_type", "credenciales")
+
+        if form_type == "password":
+            password_form = PasswordChangeForm(user=request.user, data=request.POST)
+            credenciales_form = CredencialesAccesoForm(instance=request.user)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, "Tu contraseña se actualizó correctamente.")
+                return redirect("credenciales_acceso")
+            return self.render_to_response(self.get_context_data(password_form=password_form, credenciales_form=credenciales_form))
+
+        credenciales_form = CredencialesAccesoForm(request.POST, instance=request.user)
+        password_form = PasswordChangeForm(user=request.user)
+        if credenciales_form.is_valid():
+            credenciales_form.save()
+            messages.success(request, "Tus credenciales de acceso se actualizaron correctamente.")
+            return redirect("credenciales_acceso")
+
+        return self.render_to_response(self.get_context_data(credenciales_form=credenciales_form, password_form=password_form))
+
+
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         return self.request.user.is_authenticated and self.request.user.rol == CustomUser.ROL_ADMIN
@@ -242,6 +277,22 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             ip_valida = IpOficinaAutorizada.objects.filter(ip_publica=ip_actual, activa=True).exists()
         horario = usuario.horario
         config_gps = ConfiguracionGPS.obtener_configuracion_activa()
+        
+        from django.db.models import Sum
+        total_tarde = RegistroAsistencia.objects.filter(empleado=usuario).aggregate(total=Sum('minutos_tarde'))['total'] or 0
+        total_temprano = RegistroAsistencia.objects.filter(empleado=usuario).aggregate(total=Sum('minutos_temprano'))['total'] or 0
+        
+        minutos_para_tardanza = None
+        if horario and not registro_hoy:
+            ahora = timezone.localtime(timezone.now()).time()
+            from datetime import datetime
+            limite = horario.hora_entrada_con_tolerancia()
+            ahora_dt = datetime.combine(hoy, ahora)
+            limite_dt = datetime.combine(hoy, limite)
+            diff = (limite_dt - ahora_dt).total_seconds() / 60.0
+            if diff > 0:
+                minutos_para_tardanza = int(diff)
+        
         context.update(
             {
                 "registro_hoy": registro_hoy,
@@ -253,6 +304,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 "requiere_gps": requiere_validacion_gps(usuario),
                 "limite_entrada": horario.hora_entrada_con_tolerancia() if horario else None,
                 "config_gps": config_gps,
+                "total_tarde": total_tarde,
+                "total_temprano": total_temprano,
+                "minutos_para_tardanza": minutos_para_tardanza,
             }
         )
         return context
@@ -266,12 +320,14 @@ class PanelControlView(LoginRequiredMixin, TemplateView):
         hoy = timezone.localdate()
         empleados = CustomUser.objects.filter(
             is_active=True,
+            rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH]
         ).select_related('area')
         asistencias_hoy = RegistroAsistencia.objects.filter(fecha=hoy)
+        registros_hoy_dict = {reg.empleado_id: reg for reg in asistencias_hoy}
         
         empleados_lista = []
         for empleado in empleados:
-            registro_hoy = asistencias_hoy.filter(empleado=empleado).first()
+            registro_hoy = registros_hoy_dict.get(empleado.id)
             empleado.estado_hoy = (
                 "Presente"
                 if registro_hoy and registro_hoy.estado == RegistroAsistencia.ESTADO_A_TIEMPO
@@ -557,6 +613,10 @@ class JustificacionCreateView(LoginRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         self.asistencia = get_object_or_404(RegistroAsistencia, pk=kwargs["asistencia_id"])
+        if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
+            if self.asistencia.empleado != request.user and getattr(self.asistencia.empleado, 'supervisor', None) != request.user:
+                from django.core.exceptions import PermissionDenied
+                raise PermissionDenied("No autorizado para justificar este registro.")
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -617,7 +677,7 @@ def validar_gps(request):
                 })
         
         # Validar coordenadas de usuario
-        if not latitud_usuario or not longitud_usuario:
+        if latitud_usuario in (None, "") or longitud_usuario in (None, ""):
             return JsonResponse({
                 'valido': False,
                 'mensaje': 'Coordenadas GPS inválidas o no disponibles'
@@ -693,7 +753,7 @@ def validar_qr_oficina(request):
         if int(payload.get('config_id', 0)) != config_gps.id:
             return JsonResponse({'valido': False, 'mensaje': 'El QR no corresponde a la oficina activa'}, status=400)
 
-        if not latitud_usuario or not longitud_usuario:
+        if latitud_usuario in (None, "") or longitud_usuario in (None, ""):
             return JsonResponse({'valido': False, 'mensaje': 'Debes compartir tu ubicación GPS para validar el QR'}, status=400)
 
         resultado = validar_ubicacion_gps(
@@ -765,7 +825,7 @@ def guardar_gps_admin(request):
         nombre = datos.get('nombre', 'Oficina Principal')
         radio = datos.get('radio', 20)
         
-        if not latitud or not longitud:
+        if latitud in (None, "") or longitud in (None, ""):
             return JsonResponse({
                 'success': False,
                 'message': 'Coordenadas GPS inválidas'
@@ -845,6 +905,19 @@ def descargar_qr_oficina(request):
     return response
 
 
+def calcular_tardanza_y_temprano(horario, hora_marcada) -> tuple[int, int]:
+    if not horario:
+        return 0, 0
+    from datetime import datetime, date
+    h_entrada = datetime.combine(date.today(), horario.hora_entrada)
+    h_marcada = datetime.combine(date.today(), hora_marcada)
+    diff = (h_marcada - h_entrada).total_seconds() / 60.0
+    if diff > 0:
+        return int(diff), 0
+    return 0, int(-diff)
+
+
+
 @login_required
 @require_POST
 def marcar_evento(request, accion: str):
@@ -873,8 +946,9 @@ def marcar_evento(request, accion: str):
 
     latitud = request.POST.get("latitud")
     longitud = request.POST.get("longitud")
+    tipo_marcacion = request.POST.get("tipo_marcacion")
 
-    if accion in ("entrada", "qr"):
+    if accion in ("entrada",):
         for validar in (
             validar_dia_sin_permiso_ni_feriado,
             validar_horario_para_marcacion,
@@ -894,14 +968,31 @@ def marcar_evento(request, accion: str):
             registro.latitud_entrada = latitud
             registro.longitud_entrada = longitud
             registro.precisión_entrada = request.POST.get("precisión", None)
+            
+        if tipo_marcacion == 'qr':
+            registro.tipo_entrada = 'qr'
+        elif latitud and longitud:
+            registro.tipo_entrada = 'gps'
+        else:
+            registro.tipo_entrada = 'manual'
 
-        if usuario.horario and not usuario.horario.es_laborable(fecha):
-            if obtener_recuperacion_pendiente(usuario):
-                registro.estado = RegistroAsistencia.ESTADO_RECUPERACION
+        if usuario.horario:
+            tarde, temprano = calcular_tardanza_y_temprano(usuario.horario, ahora.time())
+            registro.minutos_tarde = tarde
+            registro.minutos_temprano = temprano
+            
+            if not usuario.horario.es_laborable(fecha):
+                if obtener_recuperacion_pendiente(usuario):
+                    registro.estado = RegistroAsistencia.ESTADO_RECUPERACION
+                else:
+                    registro.estado = RegistroAsistencia.ESTADO_FALTA
+            elif tarde > usuario.horario.tolerancia_minutos:
+                if usuario.horario.tardanza_maxima_minutos > 0 and tarde > usuario.horario.tardanza_maxima_minutos and not usuario.horario.permite_entrada_tardia:
+                    registro.estado = RegistroAsistencia.ESTADO_FALTA
+                else:
+                    registro.estado = RegistroAsistencia.ESTADO_TARDANZA
             else:
-                registro.estado = RegistroAsistencia.ESTADO_FALTA
-        elif usuario.horario and ahora.time() > usuario.horario.hora_entrada_con_tolerancia():
-            registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+                registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
         else:
             registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
     elif accion == "inicio_almuerzo":
@@ -932,6 +1023,13 @@ def marcar_evento(request, accion: str):
             registro.latitud_salida = latitud
             registro.longitud_salida = longitud
             registro.precisión_salida = request.POST.get('precisión', None)
+            
+        if tipo_marcacion == 'qr':
+            registro.tipo_salida = 'qr'
+        elif latitud and longitud:
+            registro.tipo_salida = 'gps'
+        else:
+            registro.tipo_salida = 'manual'
         
         if actividad:
             registro.actividad_diaria = actividad
@@ -964,8 +1062,18 @@ def marcar_evento(request, accion: str):
             registro.latitud_entrada = latitud
             registro.longitud_entrada = longitud
             registro.precisión_entrada = request.POST.get("precisión", None)
-        if usuario.horario and ahora.time() > usuario.horario.hora_entrada_con_tolerancia():
-            registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+            
+        if usuario.horario:
+            tarde, temprano = calcular_tardanza_y_temprano(usuario.horario, ahora.time())
+            registro.minutos_tarde = tarde
+            registro.minutos_temprano = temprano
+            if tarde > usuario.horario.tolerancia_minutos:
+                if usuario.horario.tardanza_maxima_minutos > 0 and tarde > usuario.horario.tardanza_maxima_minutos and not usuario.horario.permite_entrada_tardia:
+                    registro.estado = RegistroAsistencia.ESTADO_FALTA
+                else:
+                    registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+            else:
+                registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
         else:
             registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
     else:
@@ -1019,16 +1127,24 @@ def escanear_qr_empleado(request):
             
             registro.hora_entrada = ahora
             registro.ip_registro = obtener_ip_cliente(request)
+            registro.tipo_entrada = 'rrhh'
             
             # Determinar estado de entrada
             if empleado.horario:
+                tarde, temprano = calcular_tardanza_y_temprano(empleado.horario, ahora.time())
+                registro.minutos_tarde = tarde
+                registro.minutos_temprano = temprano
+                
                 if not empleado.horario.es_laborable(fecha):
                     if obtener_recuperacion_pendiente(empleado):
                         registro.estado = RegistroAsistencia.ESTADO_RECUPERACION
                     else:
                         registro.estado = RegistroAsistencia.ESTADO_FALTA
-                elif ahora.time() > empleado.horario.hora_entrada_con_tolerancia():
-                    registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+                elif tarde > empleado.horario.tolerancia_minutos:
+                    if empleado.horario.tardanza_maxima_minutos > 0 and tarde > empleado.horario.tardanza_maxima_minutos and not empleado.horario.permite_entrada_tardia:
+                        registro.estado = RegistroAsistencia.ESTADO_FALTA
+                    else:
+                        registro.estado = RegistroAsistencia.ESTADO_TARDANZA
                 else:
                     registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
             else:
@@ -1068,6 +1184,7 @@ def escanear_qr_empleado(request):
                 )
             
             registro.hora_salida = ahora
+            registro.tipo_salida = 'rrhh'
             
             # Calcular horas netas
             if registro.inicio_almuerzo and registro.fin_almuerzo:

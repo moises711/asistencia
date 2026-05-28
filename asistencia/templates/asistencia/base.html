@@ -495,11 +495,17 @@
                 ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
                 : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
 
-            toast.className = `glass flex items-center gap-3 px-4 py-3 rounded-xl border ${bgClass} ${textClass} fade-in pointer-events-auto shadow-lg transform transition-all duration-300`;
+            toast.className = `glass flex items-center gap-3 px-4 py-3 rounded-xl border ${bgClass} ${textClass} fade-in pointer-events-auto shadow-lg transform transition-all duration-300 cursor-pointer hover:opacity-80`;
             toast.innerHTML = `
                 <div>${icon}</div>
-                <div class="text-sm font-medium">${message}</div>
+                <div class="text-sm font-medium flex-1">${message}</div>
+                <svg class="w-4 h-4 opacity-50 hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             `;
+            toast.onclick = function() {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px) scale(0.95)';
+                setTimeout(() => toast.remove(), 300);
+            };
 
             container.appendChild(toast);
 

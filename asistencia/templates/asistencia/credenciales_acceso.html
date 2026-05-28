@@ -1,0 +1,136 @@
+{% extends "asistencia/base.html" %}
+
+{% block title %}Mis credenciales{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="glass rounded-2xl p-6 md:p-8 border border-white/10 shadow-2xl">
+        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6 mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-zinc-100">Mis credenciales</h2>
+                <p class="text-sm text-zinc-400 mt-1 max-w-2xl">Aquí puedes actualizar tu usuario, tu correo y tu contraseña de acceso al sistema.</p>
+            </div>
+            <div class="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-xs text-cyan-200 md:max-w-xs">
+                Cambiar tus credenciales mejora el control de acceso de tu cuenta.
+            </div>
+        </div>
+
+        {% if messages %}
+        <div class="space-y-3 mb-6">
+            {% for message in messages %}
+            <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="grid gap-6 lg:grid-cols-2">
+            <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-zinc-100">Datos de acceso</h3>
+                    <p class="text-sm text-zinc-400 mt-1">Actualiza tu usuario y tu correo de recuperación.</p>
+                </div>
+
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="credenciales">
+
+                    {% if credenciales_form.non_field_errors %}
+                    <div class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                        {{ credenciales_form.non_field_errors }}
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <label for="{{ credenciales_form.username.id_for_label }}" class="block text-sm font-medium text-zinc-300 mb-2">Usuario</label>
+                        {{ credenciales_form.username }}
+                        {% if credenciales_form.username.errors %}
+                        <p class="mt-2 text-xs text-rose-300">{{ credenciales_form.username.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ credenciales_form.email.id_for_label }}" class="block text-sm font-medium text-zinc-300 mb-2">Correo electrónico</label>
+                        {{ credenciales_form.email }}
+                        {% if credenciales_form.email.errors %}
+                        <p class="mt-2 text-xs text-rose-300">{{ credenciales_form.email.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ credenciales_form.current_password.id_for_label }}" class="block text-sm font-medium text-zinc-300 mb-2">Contraseña actual</label>
+                        {{ credenciales_form.current_password }}
+                        <p class="mt-2 text-xs text-zinc-500">Necesaria para confirmar los cambios.</p>
+                        {% if credenciales_form.current_password.errors %}
+                        <p class="mt-2 text-xs text-rose-300">{{ credenciales_form.current_password.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn-neo w-full justify-center px-5 py-3 rounded-xl text-sm font-semibold shadow-lg shadow-red-500/20 hover:shadow-red-500/30 transition-all">
+                        Guardar credenciales
+                    </button>
+                </form>
+            </section>
+
+            <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-zinc-100">Cambiar contraseña</h3>
+                    <p class="text-sm text-zinc-400 mt-1">Usa una nueva clave segura para mantener protegida tu cuenta.</p>
+                </div>
+
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="password">
+
+                    {% if password_form.non_field_errors %}
+                    <div class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                        {{ password_form.non_field_errors }}
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <label for="id_old_password" class="block text-sm font-medium text-zinc-300 mb-2">Contraseña actual</label>
+                        <input type="password" name="old_password" id="id_old_password" autocomplete="current-password" required
+                               class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition"
+                               placeholder="Ingresa tu contraseña actual">
+                        {% if password_form.old_password.errors %}
+                        <p class="mt-2 text-xs text-rose-300">{{ password_form.old_password.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="id_new_password1" class="block text-sm font-medium text-zinc-300 mb-2">Nueva contraseña</label>
+                        <input type="password" name="new_password1" id="id_new_password1" autocomplete="new-password" required
+                               class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition"
+                               placeholder="Escribe la nueva contraseña">
+                        {% if password_form.new_password1.errors %}
+                        <p class="mt-2 text-xs text-rose-300">{{ password_form.new_password1.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="id_new_password2" class="block text-sm font-medium text-zinc-300 mb-2">Confirmar nueva contraseña</label>
+                        <input type="password" name="new_password2" id="id_new_password2" autocomplete="new-password" required
+                               class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition"
+                               placeholder="Repite la nueva contraseña">
+                        {% if password_form.new_password2.errors %}
+                        <p class="mt-2 text-xs text-rose-300">{{ password_form.new_password2.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn-ghost w-full justify-center px-5 py-3 rounded-xl text-sm font-semibold border border-white/10 hover:border-white/20 transition-all">
+                        Guardar contraseña nueva
+                    </button>
+                </form>
+            </section>
+        </div>
+
+        <div class="flex justify-end pt-2">
+            <a href="{% url 'dashboard' %}" class="btn-ghost px-5 py-3 rounded-xl text-sm font-semibold text-center border border-white/10 hover:border-white/20 transition-all">
+                Volver al dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
