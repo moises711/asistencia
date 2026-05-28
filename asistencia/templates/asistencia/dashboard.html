@@ -619,8 +619,44 @@
     {% if config_gps %}
     let qrOficinaScanner = null;
     let qrOficinaActivo = false;
+    let qrOficinaProcesando = false;
     let ultimoQrOficina = null;
     let ultimoQrOficinaAt = 0;
+    let audioContextQR = null;
+
+    function reproducirSonidoQR(tipo = 'success') {
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+
+            if (!audioContextQR) {
+                audioContextQR = new AudioContextClass();
+            }
+
+            if (audioContextQR.state === 'suspended') {
+                audioContextQR.resume();
+            }
+
+            const oscillator = audioContextQR.createOscillator();
+            const gainNode = audioContextQR.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.value = tipo === 'success' ? 880 : 220;
+            gainNode.gain.value = 0.0001;
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContextQR.destination);
+
+            const now = audioContextQR.currentTime;
+            gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+            oscillator.start(now);
+            oscillator.stop(now + 0.2);
+        } catch (error) {
+            console.warn('No se pudo reproducir el sonido QR:', error);
+        }
+    }
 
     function showQrOficinaFeedback(message, type = 'success') {
         const feedback = document.getElementById('qr-oficina-feedback');
@@ -718,11 +754,13 @@
             };
 
             const onScanSuccess = async (decodedText) => {
+                if (qrOficinaProcesando) return;
                 const codigo = (decodedText || '').trim();
                 const ahora = Date.now();
                 if (!codigo) return;
                 if (codigo === ultimoQrOficina && (ahora - ultimoQrOficinaAt) < 2500) return;
 
+                qrOficinaProcesando = true;
                 ultimoQrOficina = codigo;
                 ultimoQrOficinaAt = ahora;
                 showQrOficinaFeedback('Validando QR de oficina...', 'warning');
@@ -741,6 +779,8 @@
 
                     const datos = await respuesta.json();
                     if (respuesta.ok && datos.valido) {
+                        reproducirSonidoQR('success');
+                        const accionMarcacion = qrOficinaModo === 'salida' ? 'salida' : 'entrada';
                         gpsValido = true;
                         actualizarEstadoBotonEntrada();
                         const status = document.getElementById('gps-status');
@@ -752,21 +792,25 @@
                         window.showToast(datos.mensaje || 'QR de oficina validado', 'success');
 
                         try {
-                            if (qrOficinaModo === 'salida') {
-                                await registrarMarcacionDesdeQR('salida');
-                            } else {
-                                await registrarMarcacionDesdeQR('entrada');
-                            }
-                        } finally {
-                            setTimeout(() => cerrarEscanerQROficina(), 500);
+                            await cerrarEscanerQROficina();
+                            await registrarMarcacionDesdeQR(accionMarcacion);
+                        } catch (error) {
+                            window.showToast(error.message || 'No se pudo registrar la asistencia', 'error');
+                            qrOficinaProcesando = false;
                         }
                     } else {
+                        reproducirSonidoQR('error');
                         showQrOficinaFeedback(datos.mensaje || 'No se pudo validar el QR de la oficina', 'error');
                         window.showToast(datos.mensaje || 'No se pudo validar el QR de la oficina', 'error');
+                        await cerrarEscanerQROficina();
+                        qrOficinaProcesando = false;
                     }
                 } catch (error) {
+                    reproducirSonidoQR('error');
                     showQrOficinaFeedback('Error al validar QR de oficina', 'error');
                     window.showToast('Error al validar QR de oficina', 'error');
+                    await cerrarEscanerQROficina();
+                    qrOficinaProcesando = false;
                 }
             };
 
@@ -792,6 +836,7 @@
             qrOficinaScanner = null;
         }
         qrOficinaActivo = false;
+        qrOficinaProcesando = false;
         ultimoQrOficina = null;
         ultimoQrOficinaAt = 0;
         qrOficinaModo = qrOficinaModo || null;
