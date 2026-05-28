@@ -271,10 +271,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         hoy = timezone.localdate()
         registro_hoy = RegistroAsistencia.objects.filter(empleado=usuario, fecha=hoy).first()
         ultimos = RegistroAsistencia.objects.filter(empleado=usuario).order_by("-fecha")[:5]
-        ip_actual = obtener_ip_cliente(self.request)
-        ip_valida = True
-        if not usuario.permite_remoto:
-            ip_valida = IpOficinaAutorizada.objects.filter(ip_publica=ip_actual, activa=True).exists()
         horario = usuario.horario
         config_gps = ConfiguracionGPS.obtener_configuracion_activa()
         
@@ -297,8 +293,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             {
                 "registro_hoy": registro_hoy,
                 "ultimos_registros": ultimos,
-                "ip_actual": ip_actual,
-                "ip_valida": ip_valida,
                 "horario": horario,
                 "dia_laborable": horario.es_laborable(hoy) if horario else None,
                 "requiere_gps": requiere_validacion_gps(usuario),
@@ -359,8 +353,6 @@ class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        ip_actual = obtener_ip_cliente(self.request)
-        ip_autorizada = IpOficinaAutorizada.objects.filter(ip_publica=ip_actual, activa=True).exists()
         hoy = timezone.localdate()
         inicio_semana = hoy - timedelta(days=hoy.weekday())
         inicio_mes = hoy.replace(day=1)
@@ -417,8 +409,6 @@ class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
         
         context.update(
             {
-                "ip_actual": ip_actual,
-                "ip_autorizada": ip_autorizada,
                 "total_empleados": empleados.count(),
                 "presentes": asistencias_hoy.exclude(estado=RegistroAsistencia.ESTADO_FALTA).count(),
                 "tardanzas": asistencias_hoy.filter(estado=RegistroAsistencia.ESTADO_TARDANZA).count(),
@@ -909,18 +899,6 @@ def marcar_evento(request, accion: str):
     fecha = timezone.localdate()
     ahora = timezone.localtime(timezone.now())
     ip_empleado = obtener_ip_cliente(request)
-    from django.conf import settings
-
-    if not usuario.permite_remoto and not settings.DEBUG:
-        ip_valida = IpOficinaAutorizada.objects.filter(ip_publica=ip_empleado, activa=True).exists()
-        if not ip_valida:
-            return JsonResponse(
-                {
-                    "status": "error",
-                    "message": f"Acceso denegado. Tu IP actual ({ip_empleado}) no pertenece a la red autorizada.",
-                },
-                status=403,
-            )
 
     registro, _ = RegistroAsistencia.objects.get_or_create(
         empleado=usuario,

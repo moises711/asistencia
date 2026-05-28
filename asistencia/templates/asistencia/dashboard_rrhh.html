@@ -14,17 +14,6 @@
             </div>
 
             <div class="flex flex-col sm:flex-row gap-3">
-                <div class="px-4 py-3 rounded-xl border border-white/10 bg-white/5 flex items-center gap-3">
-                    <div
-                        class="w-2 h-2 rounded-full {% if ip_valida %}bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]{% else %}bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]{% endif %}">
-                    </div>
-                    <div>
-                        <div class="text-sm text-zinc-200">Red oficina</div>
-                        <div class="text-xs text-zinc-400">{% if ip_valida %}Autorizado{% else %}No conectado{% endif %}
-                        </div>
-                    </div>
-                </div>
-
                 <button class="btn-ghost px-4 py-3 rounded-xl flex items-center gap-2 group transition-all"
                     onclick="solicitarGPS()">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-indigo-400" fill="none" stroke="currentColor"
