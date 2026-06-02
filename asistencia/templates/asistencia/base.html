@@ -466,6 +466,7 @@
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
           
             <div class="text-sm flex items-center gap-2">
+                {% block header_auth_actions %}
                 {% if user.is_authenticated %}
                 <span class="hidden sm:inline-block text-zinc-300 truncate max-w-[150px]">{{ user.username }}</span>
                 <form method="post" action="/logout/" class="inline m-0">
@@ -473,6 +474,7 @@
                     <button type="submit" class="btn-ghost px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap">Cerrar sesión</button>
                 </form>
                 {% endif %}
+                {% endblock %}
             </div>
         </div>
     </header>

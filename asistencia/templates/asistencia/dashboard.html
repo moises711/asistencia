@@ -3,13 +3,24 @@
 
 {% block title %}Dashboard{% endblock %}
 
+{% block header_auth_actions %}{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
     <div class="glass rounded-2xl p-6 md:p-8 fade-in">
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-            <div class="space-y-2">
-                <div class="text-sm text-zinc-400 uppercase tracking-[0.2em]">Panel en vivo</div>
-                <div id="reloj" class="text-3xl md:text-4xl font-semibold">--:--:--</div>
+            <div class="space-y-3">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="space-y-2">
+                        <div class="text-sm text-zinc-400 uppercase tracking-[0.2em]">Panel en vivo</div>
+                        <div id="reloj" class="text-3xl md:text-4xl font-semibold">--:--:--</div>
+                    </div>
+
+                    <form method="post" action="/logout/" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-ghost px-4 py-3 rounded-xl text-sm whitespace-nowrap">Cerrar sesión</button>
+                    </form>
+                </div>
                 <div class="text-sm text-zinc-400">Actualizacion en tiempo real</div>
             </div>
 
