@@ -13,10 +13,10 @@
                 <div class="text-sm text-zinc-400">Actualizacion en tiempo real</div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                <button class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full"
+            <div class="grid grid-cols-2 gap-3 w-full md:grid-cols-1 lg:grid-cols-2">
+                <button class="btn-ghost rounded-2xl p-4 min-h-[116px] flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:items-center sm:justify-start sm:text-left sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full"
                     onclick="solicitarGPS()">
-                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-indigo-400" fill="none" stroke="currentColor"
+                    <svg class="w-7 h-7 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-indigo-400" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
@@ -24,40 +24,40 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
-                    <div class="text-left">
+                    <div class="text-center sm:text-left">
                         <div class="text-sm text-zinc-200">Ubicacion GPS</div>
                         <div class="text-xs text-zinc-400" id="gps-status">Pendiente</div>
                     </div>
                 </button>
 
 
-                <button class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full" onclick="mostrarMiQR()">
-                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button class="btn-ghost rounded-2xl p-4 min-h-[116px] flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:items-center sm:justify-start sm:text-left sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full" onclick="mostrarMiQR()">
+                    <svg class="w-7 h-7 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                     </svg>
-                    <div class="text-left">
+                    <div class="text-center sm:text-left">
                         <div class="text-sm text-zinc-200">Mi QR</div>
                         <div class="text-xs text-zinc-400">Ampliar código</div>
                     </div>
                 </button>
 
                 {% if config_gps %}
-                <button class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full" onclick="abrirFlujoQROficina()">
-                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button class="btn-ghost rounded-2xl p-4 min-h-[116px] flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:items-center sm:justify-start sm:text-left sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full" onclick="abrirFlujoQROficina()">
+                    <svg class="w-7 h-7 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V4a1 1 0 011-1h3M21 7V4a1 1 0 00-1-1h-3M3 17v3a1 1 0 001 1h3M21 17v3a1 1 0 01-1 1h-3M8 12h8"></path>
                     </svg>
-                    <div class="text-left">
+                    <div class="text-center sm:text-left">
                         <div class="text-sm text-zinc-200">Escanear QR oficina</div>
                         <div class="text-xs text-zinc-400">Validar ubicación</div>
                     </div>
                 </button>
                 {% endif %}
 
-                <a href="{% url 'credenciales_acceso' %}" class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full">
-                    <svg class="w-5 h-5 text-zinc-400 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <a href="{% url 'credenciales_acceso' %}" class="btn-ghost rounded-2xl p-4 min-h-[116px] flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:items-center sm:justify-start sm:text-left sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full">
+                    <svg class="w-7 h-7 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3V6a3 3 0 10-6 0v2c0 1.657 1.343 3 3 3zm-6 2a2 2 0 00-2 2v3h16v-3a2 2 0 00-2-2H6z"></path>
                     </svg>
-                    <div class="text-left">
+                    <div class="text-center sm:text-left">
                         <div class="text-sm text-zinc-200">Mis credenciales</div>
                         <div class="text-xs text-zinc-400">Usuario, correo y contraseña</div>
                     </div>
@@ -637,22 +637,50 @@
                 audioContextQR.resume();
             }
 
-            const oscillator = audioContextQR.createOscillator();
-            const gainNode = audioContextQR.createGain();
-
-            oscillator.type = 'sine';
-            oscillator.frequency.value = tipo === 'success' ? 880 : 220;
-            gainNode.gain.value = 0.0001;
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContextQR.destination);
-
             const now = audioContextQR.currentTime;
-            gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
 
-            oscillator.start(now);
-            oscillator.stop(now + 0.2);
+            if (tipo === 'success') {
+                // Doble tono corto, más parecido a notificación móvil.
+                const tone1 = audioContextQR.createOscillator();
+                const gain1 = audioContextQR.createGain();
+                tone1.type = 'triangle';
+                tone1.frequency.value = 900;
+                gain1.gain.value = 0.0001;
+                tone1.connect(gain1);
+                gain1.connect(audioContextQR.destination);
+                gain1.gain.exponentialRampToValueAtTime(0.1, now + 0.015);
+                gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+                tone1.start(now);
+                tone1.stop(now + 0.13);
+
+                const tone2 = audioContextQR.createOscillator();
+                const gain2 = audioContextQR.createGain();
+                tone2.type = 'triangle';
+                tone2.frequency.value = 1150;
+                gain2.gain.value = 0.0001;
+                tone2.connect(gain2);
+                gain2.connect(audioContextQR.destination);
+                gain2.gain.exponentialRampToValueAtTime(0.09, now + 0.135);
+                gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+                tone2.start(now + 0.12);
+                tone2.stop(now + 0.23);
+            } else {
+                const oscillator = audioContextQR.createOscillator();
+                const gainNode = audioContextQR.createGain();
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.value = 220;
+                gainNode.gain.value = 0.0001;
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContextQR.destination);
+                gainNode.gain.exponentialRampToValueAtTime(0.06, now + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+                oscillator.start(now);
+                oscillator.stop(now + 0.24);
+            }
+
+            if (navigator.vibrate) {
+                navigator.vibrate(tipo === 'success' ? [70, 35, 70] : [140]);
+            }
         } catch (error) {
             console.warn('No se pudo reproducir el sonido QR:', error);
         }
@@ -741,16 +769,19 @@
             }
 
             qrOficinaActivo = true;
-            qrOficinaScanner = new Html5Qrcode('qr-oficina-reader');
+            const html5Config = (typeof Html5QrcodeSupportedFormats !== 'undefined')
+                ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] }
+                : undefined;
+            qrOficinaScanner = new Html5Qrcode('qr-oficina-reader', html5Config);
 
             const config = {
-                fps: 15,
+                fps: 24,
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
-                    const size = Math.max(150, Math.min(320, viewfinderWidth - 40, viewfinderHeight - 40));
+                    const size = Math.max(140, Math.min(280, viewfinderWidth - 34, viewfinderHeight - 34));
                     return { width: size, height: size };
                 },
                 aspectRatio: 1.333,
-                disableFlip: false,
+                disableFlip: true,
             };
 
             const onScanSuccess = async (decodedText) => {
@@ -758,7 +789,7 @@
                 const codigo = (decodedText || '').trim();
                 const ahora = Date.now();
                 if (!codigo) return;
-                if (codigo === ultimoQrOficina && (ahora - ultimoQrOficinaAt) < 2500) return;
+                if (codigo === ultimoQrOficina && (ahora - ultimoQrOficinaAt) < 1500) return;
 
                 qrOficinaProcesando = true;
                 ultimoQrOficina = codigo;
@@ -816,7 +847,25 @@
 
             const onScanError = () => {};
 
-            await qrOficinaScanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanError);
+            let cameraIdOrConfig = { facingMode: { ideal: "environment" } };
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                if (devices && devices.length > 0) {
+                    let cameraId = devices[0].id;
+                    for (let i = 0; i < devices.length; i++) {
+                        const label = (devices[i].label || '').toLowerCase();
+                        if (label.includes('back') || label.includes('trasera') || label.includes('environment') || label.includes('rear')) {
+                            cameraId = devices[i].id;
+                            break;
+                        }
+                    }
+                    cameraIdOrConfig = cameraId;
+                }
+            } catch (error) {
+                console.warn('No se pudo enumerar cámaras, usando fallback de constraints:', error);
+            }
+
+            await qrOficinaScanner.start(cameraIdOrConfig, config, onScanSuccess, onScanError);
             showQrOficinaFeedback('Cámara lista, apunta al QR de la oficina', 'success');
         } catch (error) {
             showQrOficinaFeedback('No se pudo abrir la cámara', 'error');

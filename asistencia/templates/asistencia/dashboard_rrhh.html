@@ -446,22 +446,49 @@
                 audioContextQR.resume();
             }
 
-            const oscillator = audioContextQR.createOscillator();
-            const gainNode = audioContextQR.createGain();
-
-            oscillator.type = 'sine';
-            oscillator.frequency.value = tipo === 'success' ? 880 : 220;
-            gainNode.gain.value = 0.0001;
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContextQR.destination);
-
             const now = audioContextQR.currentTime;
-            gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
 
-            oscillator.start(now);
-            oscillator.stop(now + 0.2);
+            if (tipo === 'success') {
+                const tone1 = audioContextQR.createOscillator();
+                const gain1 = audioContextQR.createGain();
+                tone1.type = 'triangle';
+                tone1.frequency.value = 900;
+                gain1.gain.value = 0.0001;
+                tone1.connect(gain1);
+                gain1.connect(audioContextQR.destination);
+                gain1.gain.exponentialRampToValueAtTime(0.1, now + 0.015);
+                gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+                tone1.start(now);
+                tone1.stop(now + 0.13);
+
+                const tone2 = audioContextQR.createOscillator();
+                const gain2 = audioContextQR.createGain();
+                tone2.type = 'triangle';
+                tone2.frequency.value = 1150;
+                gain2.gain.value = 0.0001;
+                tone2.connect(gain2);
+                gain2.connect(audioContextQR.destination);
+                gain2.gain.exponentialRampToValueAtTime(0.09, now + 0.135);
+                gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+                tone2.start(now + 0.12);
+                tone2.stop(now + 0.23);
+            } else {
+                const oscillator = audioContextQR.createOscillator();
+                const gainNode = audioContextQR.createGain();
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.value = 220;
+                gainNode.gain.value = 0.0001;
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContextQR.destination);
+                gainNode.gain.exponentialRampToValueAtTime(0.06, now + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+                oscillator.start(now);
+                oscillator.stop(now + 0.24);
+            }
+
+            if (navigator.vibrate) {
+                navigator.vibrate(tipo === 'success' ? [70, 35, 70] : [140]);
+            }
         } catch (error) {
             console.warn('No se pudo reproducir el sonido QR:', error);
         }
@@ -549,17 +576,20 @@
 
         scannerActivo = true;
         const qrRegionId = 'qr-reader';
-        html5QrScanner = new Html5Qrcode(qrRegionId);
+        const html5Config = (typeof Html5QrcodeSupportedFormats !== 'undefined')
+            ? { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] }
+            : undefined;
+        html5QrScanner = new Html5Qrcode(qrRegionId, html5Config);
 
         // Configuración de escaneo
         const config = {
-            fps: 15,
+            fps: 24,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-                const size = Math.max(150, Math.min(350, viewfinderWidth - 40, viewfinderHeight - 40));
+                const size = Math.max(140, Math.min(300, viewfinderWidth - 34, viewfinderHeight - 34));
                 return { width: size, height: size };
             },
             aspectRatio: 1.333,
-            disableFlip: false,
+            disableFlip: true,
         };
 
         let scanErrorHintTimeout = null;
@@ -570,7 +600,7 @@
             const ahora = Date.now();
             const codigoLimpio = (decodedText || '').trim().toUpperCase();
             if (!codigoLimpio) return;
-            if (codigoLimpio === ultimoCodigoEscaneado && (ahora - ultimoCodigoEscaneadoAt) < 2500) {
+            if (codigoLimpio === ultimoCodigoEscaneado && (ahora - ultimoCodigoEscaneadoAt) < 1500) {
                 return;
             }
 
