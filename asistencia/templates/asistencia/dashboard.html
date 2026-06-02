@@ -13,8 +13,8 @@
                 <div class="text-sm text-zinc-400">Actualizacion en tiempo real</div>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <button class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto"
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                <button class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full"
                     onclick="solicitarGPS()">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-indigo-400" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
@@ -31,7 +31,7 @@
                 </button>
 
 
-                <button class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto" onclick="mostrarMiQR()">
+                <button class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full" onclick="mostrarMiQR()">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                     </svg>
@@ -42,7 +42,7 @@
                 </button>
 
                 {% if config_gps %}
-                <button class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto" onclick="abrirFlujoQROficina()">
+                <button class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full" onclick="abrirFlujoQROficina()">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V4a1 1 0 011-1h3M21 7V4a1 1 0 00-1-1h-3M3 17v3a1 1 0 001 1h3M21 17v3a1 1 0 01-1 1h-3M8 12h8"></path>
                     </svg>
@@ -53,7 +53,7 @@
                 </button>
                 {% endif %}
 
-                <a href="{% url 'credenciales_acceso' %}" class="btn-ghost px-4 py-3 rounded-xl flex items-center justify-between sm:justify-start gap-2 group transition-all w-full sm:w-auto">
+                <a href="{% url 'credenciales_acceso' %}" class="btn-ghost rounded-2xl p-4 min-h-[108px] flex flex-col items-start justify-center gap-3 text-left sm:flex-row sm:items-center sm:justify-start sm:min-h-0 sm:rounded-xl sm:px-4 sm:py-3 group transition-all w-full">
                     <svg class="w-5 h-5 text-zinc-400 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3V6a3 3 0 10-6 0v2c0 1.657 1.343 3 3 3zm-6 2a2 2 0 00-2 2v3h16v-3a2 2 0 00-2-2H6z"></path>
                     </svg>
@@ -176,7 +176,6 @@
                 </div>
 
                 <!-- Textarea de actividades (aparece después de entrada) -->
-                {% if request.user.rol != 'pphh' %}
                 <div class="{% if not registro_hoy.hora_entrada or registro_hoy.hora_salida %}hidden{% endif %}" id="actividad-section">
                     <label class="block text-sm text-zinc-300 mb-2">Resumen de Actividades del Día (Obligatorio para salir)</label>
                     <textarea id="actividad-diaria"
@@ -185,7 +184,6 @@
                         oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
                         placeholder="Ej. Terminé el diseño de banners, programé la vista de reportes, revisé feedback del cliente..."></textarea>
                 </div>
-                {% endif %}
 
                 {% if registro_hoy.hora_salida %}
                 <div class="text-center py-6 text-zinc-400">
@@ -277,11 +275,7 @@
     const REQUIERE_GPS = {{ requiere_gps|yesno:"true,false" }};
     const TIENE_ENTRADA_HOY = {% if registro_hoy and registro_hoy.hora_entrada %}true{% else %}false{% endif %};
     const TIENE_SALIDA_HOY = {% if registro_hoy and registro_hoy.hora_salida %}true{% else %}false{% endif %};
-    {% if request.user.rol == 'pphh' %}
-    const REQUIERE_ACTIVIDAD = false;
-    {% else %}
     const REQUIERE_ACTIVIDAD = true;
-    {% endif %}
     let gpsValido = !REQUIERE_GPS;
     let qrOficinaModo = null;
     let qrOficinaActividad = '';
@@ -337,6 +331,10 @@
 
             // Validar que textarea tenga contenido para salida
             if (accion === 'salida' && REQUIERE_ACTIVIDAD) {
+                const actividadSection = document.getElementById('actividad-section');
+                if (actividadSection && actividadSection.classList.contains('hidden')) {
+                    actividadSection.classList.remove('hidden');
+                }
                 const actividad = obtenerActividadSalida();
                 if (!actividad || actividad.length < 10) {
                     window.showToast('Debes describir tus actividades (mín. 10 caracteres) para marcar salida', 'error');
