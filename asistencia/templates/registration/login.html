@@ -38,6 +38,10 @@
                 {{ form.password }}
             </div>
             <button type="submit" class="w-full btn-neo py-3 rounded-xl">Ingresar</button>
+            
+            <div class="text-center mt-4 text-sm text-zinc-400">
+                ¿No tienes cuenta? <a href="{% url 'register' %}" class="text-red-400 hover:text-red-300">Regístrate aquí</a>
+            </div>
         </form>
     </div>
 </div>

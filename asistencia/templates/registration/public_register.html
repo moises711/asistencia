@@ -1,0 +1,82 @@
+{% extends "asistencia/base.html" %}
+
+{% block title %}Registro de Usuario{% endblock %}
+
+{% block content %}
+<div class="min-h-[75vh] flex justify-center items-center py-10">
+    <div class="glass rounded-2xl p-8 md:p-10 fade-in w-full max-w-2xl">
+        <div class="mb-6">
+            <div class="text-sm text-zinc-400">Únete a la plataforma</div>
+            <div class="text-2xl font-semibold">Registro de personal</div>
+        </div>
+        
+        {% if form.errors %}
+        <div class="mb-6 p-4 rounded-xl border border-red-500/50 bg-red-500/10 text-red-200 text-sm">
+            Por favor, corrige los errores debajo.
+        </div>
+        {% endif %}
+        
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">Nombres</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}<p class="text-red-400 text-xs mt-1">{{ form.first_name.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">Apellidos</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}<p class="text-red-400 text-xs mt-1">{{ form.last_name.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">Usuario (login)</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}<p class="text-red-400 text-xs mt-1">{{ form.username.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">Correo Electrónico</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}<p class="text-red-400 text-xs mt-1">{{ form.email.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">DNI / Documento</label>
+                    {{ form.dni }}
+                    {% if form.dni.errors %}<p class="text-red-400 text-xs mt-1">{{ form.dni.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">Tipo de Cuenta</label>
+                    {{ form.rol }}
+                    {% if form.rol.errors %}<p class="text-red-400 text-xs mt-1">{{ form.rol.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">Área</label>
+                    {{ form.area }}
+                    {% if form.area.errors %}<p class="text-red-400 text-xs mt-1">{{ form.area.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-300 mb-2">Horario</label>
+                    {{ form.horario }}
+                    {% if form.horario.errors %}<p class="text-red-400 text-xs mt-1">{{ form.horario.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+            
+            <button type="submit" class="w-full btn-neo py-3 rounded-xl mt-6">Registrarse</button>
+            
+            <div class="text-center mt-4 text-sm text-zinc-400">
+                ¿Ya tienes una cuenta? <a href="{% url 'login' %}" class="text-red-400 hover:text-red-300">Inicia sesión</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

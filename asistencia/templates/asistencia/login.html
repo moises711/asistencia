@@ -107,11 +107,12 @@
 
                 <div class="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-white/10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p class="text-xs text-zinc-400">
-                        ¿Olvidaste tu contraseña? <a href="#" class="text-blue-400 hover:underline">Recuperar acceso</a>
+                        ¿No tienes cuenta? <a href="{% url 'register' %}" class="text-blue-400 hover:underline">Regístrate</a>
+                    </p>    
+                    <p class="text-xs text-zinc-400">
+                        ¿Olvidaste tu contraseña? <a href="{% url 'password_reset' %}" class="text-blue-400 hover:underline">Recuperar acceso</a>
                     </p>
-                    <div class="text-xs text-zinc-500">
-                        Recomendado para acceso desde dispositivos autorizados.
-                    </div>
+
                 </div>
             </div>
         </div>

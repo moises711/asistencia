@@ -211,7 +211,7 @@
             </button>
         </div>
 
-        <form id="form-personal" method="post" class="mt-6 space-y-4" novalidate onsubmit="enviarFormularioPersonal(event);">
+        <form id="form-personal" action="{% url 'register' %}" method="post" class="mt-6 space-y-4" novalidate onsubmit="enviarFormularioPersonal(event);">
             {% csrf_token %}
             <input type="hidden" id="edit-empleado-id" name="empleado_id">
             

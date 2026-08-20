@@ -142,6 +142,45 @@ class EmpleadoCreationForm(UserCreationForm):
             self.save_m2m()
         return usuario
 
+
+class PublicRegistroForm(UserCreationForm):
+    rol = forms.ChoiceField(
+        choices=[(CustomUser.ROL_EMPLEADO, 'Empleado'), (CustomUser.ROL_PPHH, 'Practicante')],
+        widget=forms.RadioSelect(attrs={'class': 'flex gap-4'}),
+        initial=CustomUser.ROL_EMPLEADO,
+        label="Tipo de Cuenta"
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = CustomUser
+        fields = [
+            "first_name",
+            "last_name",
+            "dni",
+            "email",
+            "username",
+            "area",
+            "horario",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            if not isinstance(field.widget, forms.RadioSelect):
+                field.widget.attrs.update({
+                    "class": "w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition",
+                })
+        self.fields["area"].queryset = Area.objects.all()
+        self.fields["horario"].queryset = Horario.objects.all()
+
+    def save(self, commit=True):
+        usuario = super().save(commit=False)
+        usuario.rol = self.cleaned_data.get("rol", CustomUser.ROL_EMPLEADO)
+        if commit:
+            usuario.save()
+            self.save_m2m()
+        return usuario
+
 class AreaForm(forms.ModelForm):
     class Meta:
         model = Area

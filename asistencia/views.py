@@ -17,7 +17,7 @@ from django.contrib.staticfiles import finders
 from django.http import HttpResponse, JsonResponse
 from pathlib import Path
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.contrib.auth import update_session_auth_hash
 from django.views.decorators.http import require_POST
@@ -25,10 +25,11 @@ from django.views.generic import CreateView, FormView, TemplateView
 from django.db import IntegrityError
 from django.db.models import DurationField, Sum, Value
 from django.db.models.functions import Coalesce
+from django.contrib.messages.views import SuccessMessageMixin
 
 import qrcode
 
-from .forms import AreaForm, AusenciaProgramadaForm, CredencialesAccesoForm, EmpleadoCreationForm, HorarioForm, IpOficinaAutorizadaForm, JustificacionForm, DiaFeriadoForm, MetaHorasPracticanteForm, LoginThrottleForm
+from .forms import AreaForm, AusenciaProgramadaForm, CredencialesAccesoForm, EmpleadoCreationForm, PublicRegistroForm, HorarioForm, IpOficinaAutorizadaForm, JustificacionForm, DiaFeriadoForm, MetaHorasPracticanteForm, LoginThrottleForm
 from .models import (
     CustomUser,
     Horario,
@@ -288,6 +289,30 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             diff = (limite_dt - ahora_dt).total_seconds() / 60.0
             if diff > 0:
                 minutos_para_tardanza = int(diff)
+                
+        # Calcular horas semanales
+        inicio_semana = hoy - timedelta(days=hoy.weekday())
+        total_horas_semana = RegistroAsistencia.objects.filter(
+            empleado=usuario,
+            fecha__range=(inicio_semana, hoy),
+            horas_netas_trabajadas__isnull=False
+        ).aggregate(total=Sum('horas_netas_trabajadas'))['total'] or timedelta(0)
+        
+        horas_requeridas_semana = timedelta(0)
+        if horario:
+            dias_laborables = sum([horario.lunes, horario.martes, horario.miercoles, horario.jueves, horario.viernes, horario.sabado, horario.domingo])
+            horas_requeridas_semana = horario.duracion_jornada() * dias_laborables
+            
+        horas_restantes = max(timedelta(0), horas_requeridas_semana - total_horas_semana)
+        
+        def td_format(td):
+            total_seconds = int(td.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            return f"{hours}h {minutes}m"
+        
+        horas_avanzadas_str = td_format(total_horas_semana)
+        horas_restantes_str = td_format(horas_restantes)
         
         context.update(
             {
@@ -301,6 +326,8 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 "total_tarde": total_tarde,
                 "total_temprano": total_temprano,
                 "minutos_para_tardanza": minutos_para_tardanza,
+                "horas_avanzadas_str": horas_avanzadas_str,
+                "horas_restantes_str": horas_restantes_str,
             }
         )
         return context
@@ -953,10 +980,7 @@ def marcar_evento(request, accion: str):
                 else:
                     registro.estado = RegistroAsistencia.ESTADO_FALTA
             elif tarde > usuario.horario.tolerancia_minutos:
-                if usuario.horario.tardanza_maxima_minutos > 0 and tarde > usuario.horario.tardanza_maxima_minutos and not usuario.horario.permite_entrada_tardia:
-                    registro.estado = RegistroAsistencia.ESTADO_FALTA
-                else:
-                    registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+                registro.estado = RegistroAsistencia.ESTADO_TARDANZA
             else:
                 registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
         else:
@@ -980,7 +1004,7 @@ def marcar_evento(request, accion: str):
             return JsonResponse({"status": "error", "message": "Salida ya registrada."}, status=400)
         
         actividad = request.POST.get("actividad", "").strip()
-        if usuario.rol not in (CustomUser.ROL_PPHH, CustomUser.ROL_RRHH) and not actividad:
+        if usuario.rol in (CustomUser.ROL_PPHH, CustomUser.ROL_EMPLEADO) and not actividad:
             return JsonResponse({"status": "error", "message": "Debes ingresar tu resumen de actividades del día para poder marcar la salida."}, status=400)
 
         registro.hora_salida = ahora
@@ -1034,10 +1058,7 @@ def marcar_evento(request, accion: str):
             registro.minutos_tarde = tarde
             registro.minutos_temprano = temprano
             if tarde > usuario.horario.tolerancia_minutos:
-                if usuario.horario.tardanza_maxima_minutos > 0 and tarde > usuario.horario.tardanza_maxima_minutos and not usuario.horario.permite_entrada_tardia:
-                    registro.estado = RegistroAsistencia.ESTADO_FALTA
-                else:
-                    registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+                registro.estado = RegistroAsistencia.ESTADO_TARDANZA
             else:
                 registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
         else:
@@ -1107,10 +1128,7 @@ def escanear_qr_empleado(request):
                     else:
                         registro.estado = RegistroAsistencia.ESTADO_FALTA
                 elif tarde > empleado.horario.tolerancia_minutos:
-                    if empleado.horario.tardanza_maxima_minutos > 0 and tarde > empleado.horario.tardanza_maxima_minutos and not empleado.horario.permite_entrada_tardia:
-                        registro.estado = RegistroAsistencia.ESTADO_FALTA
-                    else:
-                        registro.estado = RegistroAsistencia.ESTADO_TARDANZA
+                    registro.estado = RegistroAsistencia.ESTADO_TARDANZA
                 else:
                     registro.estado = RegistroAsistencia.ESTADO_A_TIEMPO
             else:
@@ -1725,5 +1743,20 @@ def actualizar_area_api(request, area_id: int):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
+class RegisterView(SuccessMessageMixin, CreateView):
+    template_name = 'registration/public_register.html'
+    form_class = PublicRegistroForm
+    success_url = reverse_lazy('login')
+    success_message = "¡Cuenta creada exitosamente! Ya puedes iniciar sesión."
 
-
+    def form_valid(self, form):
+        # Aseguramos que el usuario que se registra públicamente 
+        # tenga siempre un rol seguro (por ejemplo, 'empleado')
+        user = form.save(commit=False)
+        user.rol = 'empleado' # Evita que se autoasignen roles de admin/rrhh
+        user.save()
+        
+        # Guardar relaciones many-to-many si el formulario las usa
+        form.save_m2m()
+        
+        return super().form_valid(form)
