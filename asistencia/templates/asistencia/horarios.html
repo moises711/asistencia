@@ -273,7 +273,7 @@
 <!-- Modal Crear Horario -->
 <div id="horario-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
     <div id="horario-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-lg glass rounded-2xl p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+    <div class="relative w-full max-w-lg glass rounded-2xl p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto">
         <div class="flex items-start justify-between gap-4 mb-6">
             <div>
                 <div class="text-lg font-semibold text-zinc-200">Crear Nuevo Horario</div>
@@ -291,7 +291,7 @@
                 {{ form.nombre }}
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-zinc-300 mb-2">Hora Entrada</label>
                     {{ form.hora_entrada }}
@@ -334,7 +334,7 @@
                 </div>
             </div>
             
-            <div class="pt-6 flex gap-3">
+            <div class="pt-6 flex flex-col sm:flex-row gap-3">
                 <button type="button" id="cancel-horario" class="flex-1 btn-ghost py-2.5 rounded-xl text-sm">Cancelar</button>
                 <button type="submit" class="flex-1 btn-neo py-2.5 rounded-xl text-sm">Guardar Horario</button>
             </div>
@@ -345,7 +345,7 @@
 <!-- Modal Editar Horario -->
 <div id="horario-edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
     <div id="horario-edit-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="cerrarModalEditarHorario()"></div>
-    <div class="relative w-full max-w-lg glass rounded-2xl p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+    <div class="relative w-full max-w-lg glass rounded-2xl p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto">
         <div class="flex items-start justify-between gap-4 mb-6">
             <div>
                 <div class="text-lg font-semibold text-zinc-200">Editar Horario</div>
@@ -365,7 +365,7 @@
                        class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 outline-none transition">
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-zinc-300 mb-2">Hora Entrada</label>
                     <input type="time" id="edit-horario-entrada" required
@@ -413,7 +413,7 @@
             
             <div id="edit-horario-status" class="text-center text-sm mt-2"></div>
             
-            <div class="pt-6 flex gap-3">
+            <div class="pt-6 flex flex-col sm:flex-row gap-3">
                 <button type="button" onclick="cerrarModalEditarHorario()" class="flex-1 btn-ghost py-2.5 rounded-xl text-sm">Cancelar</button>
                 <button type="submit" class="flex-1 btn-neo py-2.5 rounded-xl text-sm">Guardar Cambios</button>
             </div>
@@ -430,6 +430,8 @@
     input[type="time"],
     input[type="number"] {
         width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         background: rgba(8, 8, 8, 0.9);
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: var(--text);
@@ -450,6 +452,8 @@
     #horario-modal form select,
     select {
         width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         background: rgba(20, 20, 20, 0.6);
         border: 2px solid rgba(255, 59, 59, 0.4);
         color: var(--text);

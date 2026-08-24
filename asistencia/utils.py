@@ -6,8 +6,6 @@ def calcular_horas_netas(hora_entrada, hora_salida, inicio_almuerzo=None, fin_al
     if not hora_entrada or not hora_salida:
         return None
     total = hora_salida - hora_entrada
-    if inicio_almuerzo and fin_almuerzo and fin_almuerzo > inicio_almuerzo:
-        total -= (fin_almuerzo - inicio_almuerzo)
     if total < timedelta(0):
         return None
     return total

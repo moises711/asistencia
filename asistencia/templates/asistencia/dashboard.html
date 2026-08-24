@@ -16,8 +16,10 @@
                         <div class="flex items-center gap-4">
                             <div id="reloj" class="text-3xl md:text-4xl font-semibold">--:--:--</div>
                             <div class="flex flex-col border-l border-white/10 pl-4 justify-center">
-                                <span class="text-xs font-semibold text-emerald-400" title="Horas trabajadas en la semana">Avanzado: {{ horas_avanzadas_str }}</span>
-                                <span class="text-xs font-semibold text-amber-400/80" title="Horas faltantes en la semana">Faltan: {{ horas_restantes_str }}</span>
+                                <span class="text-xs font-semibold text-emerald-400" title="Horas trabajadas en la semana">Trabajadas: {{ horas_avanzadas_str }}</span>
+                                <span class="text-xs font-semibold text-amber-400/80" title="Horas faltantes para el mínimo semanal">Faltan para 24 h: {{ horas_restantes_str }}</span>
+                                <span class="text-xs font-semibold text-rose-400/80" title="Horas que superan el máximo semanal">Excedente sobre 30 h: {{ horas_excedentes_str }}</span>
+                                <span class="text-xs text-zinc-400">{{ estado_horas_semana }}</span>
                             </div>
                         </div>
                     </div>
@@ -140,6 +142,38 @@
                 <button onclick="volverDesdeQROficina()" class="flex-1 btn-ghost py-3 rounded-xl">Volver</button>
                 <button onclick="cerrarEscanerQROficina()" class="flex-1 btn-neo py-3 rounded-xl">Cerrar</button>
             </div>
+        </div>
+    <div id="modal-solicitar-permiso" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onclick="if(event.target === this) cerrarModalPermiso()">
+        <div class="bg-zinc-900 rounded-3xl w-full max-w-md border border-white/10 shadow-2xl p-6 relative overflow-hidden flex flex-col fade-in">
+            <button onclick="cerrarModalPermiso()" class="absolute top-4 right-4 text-zinc-400 hover:text-white p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <h3 class="text-xl font-bold text-zinc-100 mb-2 text-center">Solicitar Permiso / Vacaciones</h3>
+            <p class="text-sm text-zinc-400 text-center mb-4">Ingresa las fechas y el motivo para tu solicitud.</p>
+
+            <form id="form-solicitar-permiso" class="space-y-4" onsubmit="enviarSolicitudPermiso(event)">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-1">Fecha Inicio</label>
+                        <input type="date" id="permiso-fecha-inicio" required class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-1">Fecha Fin</label>
+                        <input type="date" id="permiso-fecha-fin" required class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 outline-none">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm text-zinc-300 mb-1">Motivo / Descripción</label>
+                    <textarea id="permiso-motivo" required rows="3" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-zinc-200 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 outline-none resize-none" placeholder="Ej. Vacaciones anuales, cita médica..."></textarea>
+                </div>
+                
+                <div class="mt-4 flex gap-3">
+                    <button type="button" onclick="cerrarModalPermiso()" class="flex-1 btn-ghost py-3 rounded-xl">Cancelar</button>
+                    <button type="submit" id="btn-submit-permiso" class="flex-1 btn-neo py-3 rounded-xl">Solicitar</button>
+                </div>
+            </form>
         </div>
     </div>
     {% endif %}
@@ -270,21 +304,62 @@
         </div>
     </div>
 
-    <div class="glass rounded-2xl p-6 fade-in">
-        <div class="flex items-center justify-between mb-4">
-            <div class="font-semibold text-lg">Ultimos 5 registros</div>
-            <span class="text-xs text-zinc-400">Historico inmediato</span>
+    <div class="grid md:grid-cols-2 gap-6 mt-6">
+        <div class="glass rounded-2xl p-6 fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <div class="font-semibold text-lg">Ultimos 5 registros</div>
+                <span class="text-xs text-zinc-400">Historico inmediato</span>
+            </div>
+            <ul class="text-sm space-y-2">
+                {% for registro in ultimos_registros %}
+                <li class="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span class="text-zinc-300">{{ registro.fecha }}</span>
+                    <span class="text-zinc-400">{{ registro.get_estado_display }}</span>
+                </li>
+                {% empty %}
+                <li class="text-zinc-400">No hay registros.</li>
+                {% endfor %}
+            </ul>
         </div>
-        <ul class="text-sm space-y-2">
-            {% for registro in ultimos_registros %}
-            <li class="flex items-center justify-between border-b border-white/10 pb-2">
-                <span class="text-zinc-300">{{ registro.fecha }}</span>
-                <span class="text-zinc-400">{{ registro.get_estado_display }}</span>
-            </li>
-            {% empty %}
-            <li class="text-zinc-400">No hay registros.</li>
-            {% endfor %}
-        </ul>
+        
+        <div class="glass rounded-2xl p-6 fade-in flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <div class="font-semibold text-lg">Mis Permisos</div>
+                    <span class="text-xs text-zinc-400">Vacaciones y justificaciones</span>
+                </div>
+                <button onclick="abrirModalPermiso()" class="btn-ghost rounded-lg px-3 py-1 text-xs border border-white/10 hover:border-cyan-400/50 hover:text-cyan-400 transition-colors">
+                    + Solicitar
+                </button>
+            </div>
+            
+            {% if mis_permisos %}
+            <div class="space-y-3 overflow-y-auto pr-2 max-h-[250px]">
+                {% for permiso in mis_permisos %}
+                <div class="bg-black/20 border border-white/5 rounded-xl p-3">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-sm text-zinc-200 font-medium">{{ permiso.motivo }}</span>
+                        {% if permiso.estado == 'pendiente' %}
+                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Pendiente</span>
+                        {% elif permiso.estado == 'aprobada' %}
+                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Aprobado</span>
+                        {% else %}
+                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">Rechazado</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-xs text-zinc-400">
+                        Del {{ permiso.fecha_inicio|date:"d/m/Y" }} al {{ permiso.fecha_fin|date:"d/m/Y" }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex-1 flex flex-col items-center justify-center text-zinc-500 text-sm">
+                <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                No has solicitado ningún permiso.
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -631,6 +706,83 @@
         }
 
         throw new Error(data.message || 'No se pudo registrar la asistencia');
+    }
+    
+    // Funciones para permisos
+    function abrirModalPermiso() {
+        const modal = document.getElementById('modal-solicitar-permiso');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Set min date to today for both inputs
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('permiso-fecha-inicio').min = today;
+            document.getElementById('permiso-fecha-fin').min = today;
+            
+            document.getElementById('form-solicitar-permiso').reset();
+        }
+    }
+    
+    function cerrarModalPermiso() {
+        const modal = document.getElementById('modal-solicitar-permiso');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+    
+    async function enviarSolicitudPermiso(e) {
+        e.preventDefault();
+        
+        const fechaInicio = document.getElementById('permiso-fecha-inicio').value;
+        const fechaFin = document.getElementById('permiso-fecha-fin').value;
+        const motivo = document.getElementById('permiso-motivo').value;
+        const btnSubmit = document.getElementById('btn-submit-permiso');
+        
+        if (!fechaInicio || !fechaFin || !motivo) {
+            window.showToast('Por favor completa todos los campos', 'error');
+            return;
+        }
+        
+        if (new Date(fechaInicio) > new Date(fechaFin)) {
+            window.showToast('La fecha de inicio no puede ser posterior a la fecha de fin', 'error');
+            return;
+        }
+        
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'Enviando...';
+        
+        try {
+            const formData = new FormData();
+            formData.append('fecha_inicio', fechaInicio);
+            formData.append('fecha_fin', fechaFin);
+            formData.append('motivo', motivo);
+            
+            const response = await fetch('{% url "solicitar_permiso_empleado" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                window.showToast(data.message, 'success');
+                cerrarModalPermiso();
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                window.showToast(data.message || 'Error al procesar la solicitud', 'error');
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Solicitar';
+            }
+        } catch (error) {
+            window.showToast('Error de conexión', 'error');
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = 'Solicitar';
+        }
     }
 
     {% if config_gps %}

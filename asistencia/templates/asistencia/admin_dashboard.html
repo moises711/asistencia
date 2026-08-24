@@ -60,7 +60,7 @@
     <div id="modalConfigGPS" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target === this) cerrarModalConfigGPS()">
         <div class="bg-zinc-900 rounded-2xl w-full max-w-3xl border border-zinc-700 shadow-2xl max-h-[90vh] overflow-y-auto">
             <!-- Header -->
-            <div class="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 rounded-t-2xl sticky top-0 z-10">
+            <div class="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 sm:px-6 py-4 rounded-t-2xl sticky top-0 z-10">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-white flex items-center gap-2">
                         <span>📍</span>
@@ -72,7 +72,7 @@
             </div>
 
             <!-- Body -->
-            <div class="p-6">
+            <div class="p-4 sm:p-6">
                 <!-- Grid de dos columnas -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Panel de Captura -->
@@ -126,7 +126,7 @@
                         </div>
 
                         <!-- Botones de acción -->
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <button onclick="capturarGPSDesdeConfigModal()" 
                                     class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg transition text-sm">
                                 📍 Capturar GPS

@@ -49,6 +49,7 @@ urlpatterns = [
     path("feriados/<int:feriado_id>/eliminar/", views.eliminar_feriado, name="eliminar_feriado"),
     path("ausencias/crear/", views.crear_ausencia_programada, name="crear_ausencia_programada"),
     path("ausencias/<int:ausencia_id>/procesar/", views.procesar_ausencia, name="procesar_ausencia"),
+    path("permisos/solicitar/", views.solicitar_permiso_empleado, name="solicitar_permiso_empleado"),
     path("api/horario/<int:horario_id>/actualizar/", views.actualizar_horario_api, name="actualizar_horario_api"),
     path("api/area/<int:area_id>/actualizar/", views.actualizar_area_api, name="actualizar_area_api"),
     

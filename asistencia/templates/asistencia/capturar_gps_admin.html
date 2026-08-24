@@ -88,7 +88,7 @@
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="flex gap-3 pt-4">
+                <div class="flex flex-col sm:flex-row gap-3 pt-4">
                     <button id="btn-guardar" class="flex-1 btn-neo py-3 rounded-xl">
                         💾 Guardar Ubicación
                     </button>
@@ -116,7 +116,7 @@
                             <span class="text-emerald-400">✓ Activa</span>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div class="p-3 bg-black/40 border border-white/10 rounded-lg">
                                 <div class="text-zinc-400">Latitud</div>
                                 <div class="font-mono text-zinc-200">{{ config_gps.latitud }}</div>
@@ -153,7 +153,7 @@
                     <div class="rounded-2xl bg-white p-4 flex items-center justify-center">
                         <img src="{% url 'descargar_qr_oficina' %}" alt="QR de la oficina" class="max-w-full h-auto rounded-lg" />
                     </div>
-                    <div class="flex gap-3">
+                    <div class="flex flex-col sm:flex-row gap-3">
                         <a href="{% url 'descargar_qr_oficina' %}?download=1" class="flex-1 btn-neo py-3 rounded-xl text-center">
                             Descargar QR
                         </a>

@@ -12,8 +12,10 @@
                 <div class="flex items-center gap-4">
                     <div id="reloj" class="text-3xl md:text-4xl font-semibold">--:--:--</div>
                     <div class="flex flex-col border-l border-white/10 pl-4 justify-center">
-                        <span class="text-xs font-semibold text-emerald-400" title="Horas trabajadas en la semana">Avanzado: {{ horas_avanzadas_str }}</span>
-                        <span class="text-xs font-semibold text-amber-400/80" title="Horas faltantes en la semana">Faltan: {{ horas_restantes_str }}</span>
+                        <span class="text-xs font-semibold text-emerald-400" title="Horas trabajadas en la semana">Trabajadas: {{ horas_avanzadas_str }}</span>
+                        <span class="text-xs font-semibold text-amber-400/80" title="Horas faltantes para el mínimo semanal">Faltan para 24 h: {{ horas_restantes_str }}</span>
+                        <span class="text-xs font-semibold text-rose-400/80" title="Horas que superan el máximo semanal">Excedente sobre 30 h: {{ horas_excedentes_str }}</span>
+                        <span class="text-xs text-zinc-400">{{ estado_horas_semana }}</span>
                     </div>
                 </div>
                 <div class="text-sm text-zinc-400">Actualizacion en tiempo real</div>

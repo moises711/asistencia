@@ -27,7 +27,7 @@ Fase 3: Lógica de Negocio y Protección Antifalsificación (Backend)
 
     Paso 3.2 (Capa Antifraude de Tiempo): Diseñar las vistas de marcado (Entrada, Almuerzo, Salida) usando exclusivamente timezone.now() del servidor. El backend rechazará cualquier parámetro de fecha/hora enviado desde el frontend del cliente.
 
-    Paso 3.3 (Cálculo de Horas): Programar la lógica que resta automáticamente el tiempo transcurrido entre inicio_almuerzo y fin_almuerzo al momento de calcular las horas netas de salida.
+    Paso 3.3 (Cálculo de Horas): Calcular las horas trabajadas como el tiempo transcurrido entre hora_entrada y hora_salida, incluyendo el intervalo de almuerzo como parte del horario.
 
 Fase 4: Automatización de Tareas (Celery) y Notificaciones
 
