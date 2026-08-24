@@ -351,11 +351,18 @@ class PanelControlView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         hoy = timezone.localdate()
-        empleados = CustomUser.objects.filter(
-            is_active=True,
-            rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH]
-        ).select_related('area')
-        asistencias_hoy = RegistroAsistencia.objects.filter(fecha=hoy)
+        if self.request.user.rol == CustomUser.ROL_ADMIN:
+            empleados = CustomUser.objects.filter(is_active=True)
+        else:
+            empleados = CustomUser.objects.filter(
+                is_active=True,
+                rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH],
+            )
+
+        empleados = empleados.select_related("area", "horario").order_by(
+            "last_name", "first_name", "username"
+        )
+        asistencias_hoy = RegistroAsistencia.objects.filter(fecha=hoy, empleado__in=empleados)
         registros_hoy_dict = {reg.empleado_id: reg for reg in asistencias_hoy}
         
         empleados_lista = []
