@@ -1,8 +1,21 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from . import api_mobile
 
 urlpatterns = [
+
+    # API móvil (app asistencia)
+    path("api/v1/auth/login/", api_mobile.api_login, name="api_v1_login"),
+    path("api/v1/auth/logout/", api_mobile.api_logout, name="api_v1_logout"),
+    path("api/v1/dashboard/", api_mobile.api_dashboard, name="api_v1_dashboard"),
+    path("api/v1/gps/validar/", api_mobile.api_validar_gps, name="api_v1_validar_gps"),
+    path("api/v1/qr-oficina/validar/", api_mobile.api_validar_qr_oficina, name="api_v1_validar_qr_oficina"),
+    path("api/v1/marcar/<str:accion>/", api_mobile.api_marcar, name="api_v1_marcar"),
+    path("api/v1/permisos/", api_mobile.api_solicitar_permiso, name="api_v1_permisos"),
+    path("api/v1/permisos/listar/", api_mobile.api_listar_permisos, name="api_v1_permisos_listar"),
+    path("api/v1/rrhh/resumen/", api_mobile.api_rrhh_resumen, name="api_v1_rrhh_resumen"),
+    path("api/v1/rrhh/permisos/<int:permiso_id>/", api_mobile.api_rrhh_procesar_permiso, name="api_v1_rrhh_permiso"),
     # Auth
     path("login/", views.CustomLoginView.as_view(template_name="asistencia/login.html"), name="login"),
     path("logout/", views.LogoutView.as_view(next_page="login"), name="logout"),

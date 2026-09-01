@@ -14,6 +14,7 @@ from .models import (
     RegistroAsistencia,
     Area,
     ConfiguracionGPS,
+    DispositivoToken,
 )
 
 
@@ -221,3 +222,6 @@ class ConfiguracionGPSAdmin(admin.ModelAdmin):
         if obj.activa:
             ConfiguracionGPS.objects.filter(activa=True).exclude(pk=obj.pk).update(activa=False)
         super().save_model(request, obj, form, change)
+
+
+admin.site.register(DispositivoToken)

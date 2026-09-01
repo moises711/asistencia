@@ -319,3 +319,19 @@ class DiaFeriado(models.Model):
 
     def __str__(self):
         return f"{self.fecha} - {self.descripcion}"
+
+
+class DispositivoToken(models.Model):
+    """Token de autenticación para la app móvil (puente API)."""
+    usuario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="tokens_dispositivo")
+    key = models.CharField(max_length=64, unique=True, db_index=True)
+    nombre_dispositivo = models.CharField(max_length=120, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    ultimo_uso = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Token de dispositivo"
+        verbose_name_plural = "Tokens de dispositivo"
+
+    def __str__(self):
+        return f"{self.usuario.username} ({self.key[:8]}…)"

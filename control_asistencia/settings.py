@@ -32,6 +32,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.sonjindev.pythonanywhere.com',
 ]
 
+# La app Android no envía CSRF: usa tokens en /api/v1/
+CSRF_EXEMPT_API_PREFIX = '/api/v1/'
+
+
 
 # Application definition
 
