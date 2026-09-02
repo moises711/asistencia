@@ -171,6 +171,96 @@ class HorarioAreaFeriadoApiTests(TestCase):
             descripcion="Prueba feriado",
         )
 
+
+class MissingWebApiTests(TestCase):
+    def setUp(self):
+        self.admin = CustomUser.objects.create_user(
+            username="admin_missing_api",
+            password="test1234",
+            dni="33333333",
+            rol=CustomUser.ROL_ADMIN,
+        )
+        self.area = Area.objects.create(nombre="Contabilidad", descripcion="Área contable")
+        self.horario = Horario.objects.create(
+            nombre="Turno prueba",
+            hora_entrada=time(8, 30),
+            hora_salida=time(17, 30),
+            tolerancia_minutos=15,
+        )
+        self.empleado = CustomUser.objects.create_user(
+            username="empleado_missing_api",
+            password="test1234",
+            dni="44444444",
+            rol=CustomUser.ROL_EMPLEADO,
+            area=self.area,
+            horario=self.horario,
+        )
+        self.registro = RegistroAsistencia.objects.create(
+            empleado=self.empleado,
+            fecha=date(2026, 7, 2),
+            hora_entrada=timezone.make_aware(datetime.combine(date(2026, 7, 2), time(8, 40))),
+            hora_salida=timezone.make_aware(datetime.combine(date(2026, 7, 2), time(17, 30))),
+            estado=RegistroAsistencia.ESTADO_A_TIEMPO,
+            horas_netas_trabajadas=timedelta(hours=8, minutes=30),
+        )
+        self.justificacion = Justificacion.objects.create(
+            asistencia=self.registro,
+            motivo="Consulta médica",
+            aprobada=False,
+        )
+        self.permiso = AusenciaProgramada.objects.create(
+            empleado=self.empleado,
+            fecha_inicio=date(2026, 7, 5),
+            fecha_fin=date(2026, 7, 7),
+            motivo="Vacaciones",
+            estado=AusenciaProgramada.ESTADO_PENDIENTE,
+            creada_por=self.admin,
+        )
+
+    def test_reportes_api_list_and_summary(self):
+        self.client.login(username="admin_missing_api", password="test1234")
+        response = self.client.get("/api/reportes/asistencias/", {"fecha_inicio": "2026-07-01", "fecha_fin": "2026-07-10"})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["total_registros"], 1)
+        self.assertEqual(payload["kpis"]["presentes"], 1)
+
+    def test_justificaciones_and_ausencias_api_json(self):
+        self.client.login(username="admin_missing_api", password="test1234")
+
+        response = self.client.get("/api/justificaciones/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
+
+        response = self.client.post(
+            f"/api/justificaciones/{self.justificacion.id}/procesar/",
+            data=json.dumps({"accion": "aprobar"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
+        response = self.client.get("/api/ausencias/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
+
+        response = self.client.post(
+            f"/api/ausencias/{self.permiso.id}/procesar/",
+            data=json.dumps({"accion": "aprobar"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
+    def test_empleados_api_list(self):
+        self.client.login(username="admin_missing_api", password="test1234")
+        response = self.client.get("/api/empleados/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertGreaterEqual(len(payload["data"]), 1)
+
     def test_horarios_api_crud_admin(self):
         self.client.login(username="admin_api", password="test1234")
 

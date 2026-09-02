@@ -46,6 +46,8 @@ urlpatterns = [
     path("autorizar-ip/", views.autorizar_ip_actual, name="autorizar_ip"),
     
     # API endpoints
+    path("api/empleados/", views.api_empleados, name="api_empleados"),
+    path("api/empleados/<int:empleado_id>/", views.api_empleado_detalle, name="api_empleado_detalle"),
     path("api/empleado/<int:empleado_id>/actualizar/", views.actualizar_empleado_api, name="actualizar_empleado_api"),
     path("api/horarios/", views.api_horarios, name="api_horarios"),
     path("api/horarios/<int:horario_id>/", views.api_horario_detalle, name="api_horario_detalle"),
@@ -53,6 +55,12 @@ urlpatterns = [
     path("api/areas/<int:area_id>/", views.api_area_detalle, name="api_area_detalle"),
     path("api/feriados/", views.api_feriados, name="api_feriados"),
     path("api/feriados/<int:feriado_id>/", views.api_feriado_detalle, name="api_feriado_detalle"),
+    path("api/reportes/asistencias/", views.api_reporte_asistencias, name="api_reporte_asistencias"),
+    path("api/reportes/asistencias/exportar/", views.api_exportar_reporte_asistencias, name="api_exportar_reporte_asistencias"),
+    path("api/justificaciones/", views.api_justificaciones, name="api_justificaciones"),
+    path("api/justificaciones/<int:justificacion_id>/procesar/", views.api_procesar_justificacion, name="api_procesar_justificacion"),
+    path("api/ausencias/", views.api_ausencias, name="api_ausencias"),
+    path("api/ausencias/<int:ausencia_id>/procesar/", views.api_procesar_ausencia, name="api_procesar_ausencia"),
     
     # Reportes y justificaciones
     path("asistencias/reporte/", views.ReporteAsistenciasView.as_view(), name="reporte"),

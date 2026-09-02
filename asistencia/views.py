@@ -1545,6 +1545,258 @@ def actualizar_empleado_api(request, empleado_id: int):
         }, status=400)
 
 
+@csrf_exempt
+@login_required
+def api_empleados(request):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"success": False, "message": "Permiso denegado"}, status=403)
+
+    if request.method == "GET":
+        empleados = CustomUser.objects.select_related("area", "horario").order_by("last_name", "first_name")
+        if request.user.rol == CustomUser.ROL_SUPERVISOR:
+            empleados = empleados.filter(supervisor=request.user)
+        return JsonResponse({"success": True, "data": [_serialize_empleado(emp) for emp in empleados]}, safe=False)
+
+    return JsonResponse({"success": False, "message": "Método no permitido"}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_empleado_detalle(request, empleado_id: int):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"success": False, "message": "Permiso denegado"}, status=403)
+
+    empleado = get_object_or_404(CustomUser, pk=empleado_id)
+    if request.user.rol == CustomUser.ROL_SUPERVISOR and empleado.supervisor_id != request.user.id:
+        return JsonResponse({"success": False, "message": "No autorizado"}, status=403)
+
+    if request.method == "GET":
+        return JsonResponse({"success": True, "data": _serialize_empleado(empleado)})
+
+    return JsonResponse({"success": False, "message": "Método no permitido"}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_reporte_asistencias(request):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"success": False, "message": "Permiso denegado"}, status=403)
+
+    if request.method not in {"GET"}:
+        return JsonResponse({"success": False, "message": "Método no permitido"}, status=405)
+
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    empleado_id = request.GET.get("empleado")
+    area_id = request.GET.get("area")
+
+    queryset = RegistroAsistencia.objects.select_related("empleado", "empleado__area").all()
+    if fecha_inicio:
+        queryset = queryset.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        queryset = queryset.filter(fecha__lte=fecha_fin)
+    if empleado_id:
+        queryset = queryset.filter(empleado_id=empleado_id)
+    if area_id:
+        queryset = queryset.filter(empleado__area_id=area_id)
+
+    registros = queryset.order_by("-fecha", "-hora_entrada")
+    present = sum(1 for r in registros if r.estado == RegistroAsistencia.ESTADO_A_TIEMPO)
+    tardanzas = sum(1 for r in registros if r.estado == RegistroAsistencia.ESTADO_TARDANZA)
+    faltas = sum(1 for r in registros if r.estado == RegistroAsistencia.ESTADO_FALTA)
+    permisos = sum(1 for r in registros if r.estado == RegistroAsistencia.ESTADO_PERMISO)
+    total_horas = timedelta()
+    for registro in registros:
+        if registro.horas_netas_trabajadas:
+            total_horas += registro.horas_netas_trabajadas
+
+    resumen_por_area = {}
+    for registro in registros:
+        area_nombre = registro.empleado.area.nombre if registro.empleado.area else "Sin área"
+        resumen_por_area.setdefault(area_nombre, {"presentes": 0, "tardanzas": 0, "faltas": 0, "total": 0})
+        resumen_por_area[area_nombre]["total"] += 1
+        if registro.estado == RegistroAsistencia.ESTADO_A_TIEMPO:
+            resumen_por_area[area_nombre]["presentes"] += 1
+        elif registro.estado == RegistroAsistencia.ESTADO_TARDANZA:
+            resumen_por_area[area_nombre]["tardanzas"] += 1
+        elif registro.estado == RegistroAsistencia.ESTADO_FALTA:
+            resumen_por_area[area_nombre]["faltas"] += 1
+
+    return JsonResponse({
+        "success": True,
+        "total_registros": registros.count(),
+        "kpis": {
+            "presentes": present,
+            "tardanzas": tardanzas,
+            "faltas": faltas,
+            "permisos": permisos,
+            "horas_trabajadas": formatear_duracion(total_horas),
+        },
+        "resumen_por_area": resumen_por_area,
+        "data": [
+            {
+                "id": r.id,
+                "empleado_id": r.empleado_id,
+                "empleado": r.empleado.get_full_name() or r.empleado.username,
+                "dni": r.empleado.dni,
+                "area": r.empleado.area.nombre if r.empleado.area else None,
+                "fecha": _as_date_iso(r.fecha),
+                "hora_entrada": _as_time_iso(r.hora_entrada),
+                "hora_salida": _as_time_iso(r.hora_salida),
+                "estado": r.estado,
+                "estado_display": r.get_estado_display(),
+                "horas_trabajadas": formatear_duracion(r.horas_netas_trabajadas) if r.horas_netas_trabajadas else None,
+            } for r in registros[:200]
+        ],
+    })
+
+
+@csrf_exempt
+@login_required
+def api_exportar_reporte_asistencias(request):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"success": False, "message": "Permiso denegado"}, status=403)
+
+    if request.method not in {"GET"}:
+        return JsonResponse({"success": False, "message": "Método no permitido"}, status=405)
+
+    formato = (request.GET.get("format") or "xlsx").lower()
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    empleado_id = request.GET.get("empleado")
+    area_id = request.GET.get("area")
+
+    qs = RegistroAsistencia.objects.select_related("empleado", "empleado__area")
+    if fecha_inicio:
+        qs = qs.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        qs = qs.filter(fecha__lte=fecha_fin)
+    if empleado_id:
+        qs = qs.filter(empleado_id=empleado_id)
+    if area_id:
+        qs = qs.filter(empleado__area_id=area_id)
+
+    if formato == "csv":
+        import csv
+        from io import StringIO
+        buffer = StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["empleado", "dni", "area", "fecha", "hora_entrada", "hora_salida", "estado"])
+        for registro in qs.order_by("-fecha"):
+            writer.writerow([
+                registro.empleado.get_full_name() or registro.empleado.username,
+                registro.empleado.dni,
+                registro.empleado.area.nombre if registro.empleado.area else "",
+                _as_date_iso(registro.fecha),
+                _as_time_iso(registro.hora_entrada),
+                _as_time_iso(registro.hora_salida),
+                registro.estado,
+            ])
+        response = HttpResponse(buffer.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="reporte_asistencias.csv"'
+        return response
+
+    if formato == "xlsx":
+        return exportar_reporte_excel(request)
+
+    return JsonResponse({"success": False, "message": "Formato no soportado. Usa xlsx o csv."}, status=400)
+
+
+@csrf_exempt
+@login_required
+def api_justificaciones(request):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"success": False, "message": "Permiso denegado"}, status=403)
+
+    if request.method == "GET":
+        qs = Justificacion.objects.select_related("asistencia", "asistencia__empleado", "asistencia__empleado__area")
+        if request.user.rol == CustomUser.ROL_SUPERVISOR:
+            qs = qs.filter(asistencia__empleado__supervisor=request.user)
+        return JsonResponse({"success": True, "data": [_serialize_justificacion(j) for j in qs.order_by("-creada_en")]}, safe=False)
+
+    return JsonResponse({"success": False, "message": "Método no permitido"}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_procesar_justificacion(request, justificacion_id: int):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"status": "error", "message": "No autorizado"}, status=403)
+
+    if request.method not in {"POST", "PUT", "PATCH"}:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+    try:
+        datos = _parse_json_body(request)
+    except ValueError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+
+    justificacion = get_object_or_404(Justificacion, id=justificacion_id)
+    accion = (datos.get("accion") or "").strip().lower()
+
+    if accion == "aprobar":
+        justificacion.aprobada = True
+        justificacion.save(update_fields=["aprobada"])
+        return JsonResponse({"status": "ok", "message": "Justificación aprobada", "data": _serialize_justificacion(justificacion)})
+    if accion == "rechazar":
+        justificacion.delete()
+        return JsonResponse({"status": "ok", "message": "Justificación rechazada"})
+
+    return JsonResponse({"status": "error", "message": "Acción inválida"}, status=400)
+
+
+@csrf_exempt
+@login_required
+def api_ausencias(request):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"success": False, "message": "Permiso denegado"}, status=403)
+
+    if request.method == "GET":
+        qs = AusenciaProgramada.objects.select_related("empleado", "creada_por", "procesada_por").order_by("-fecha_inicio")
+        if request.user.rol == CustomUser.ROL_SUPERVISOR:
+            qs = qs.filter(empleado__supervisor=request.user)
+        return JsonResponse({"success": True, "data": [_serialize_ausencia(p) for p in qs]}, safe=False)
+
+    return JsonResponse({"success": False, "message": "Método no permitido"}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_procesar_ausencia(request, ausencia_id: int):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH, CustomUser.ROL_SUPERVISOR]:
+        return JsonResponse({"status": "error", "message": "No autorizado"}, status=403)
+
+    if request.method not in {"POST", "PUT", "PATCH"}:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+    try:
+        datos = _parse_json_body(request)
+    except ValueError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+
+    ausencia = get_object_or_404(AusenciaProgramada, pk=ausencia_id)
+    accion = (datos.get("accion") or "").strip().lower()
+
+    if accion == "aprobar":
+        ausencia.estado = AusenciaProgramada.ESTADO_APROBADA
+    elif accion == "rechazar":
+        ausencia.estado = AusenciaProgramada.ESTADO_RECHAZADA
+    else:
+        return JsonResponse({"status": "error", "message": "Acción inválida"}, status=400)
+
+    ausencia.procesada_por = request.user
+    ausencia.save(update_fields=["estado", "procesada_por"])
+
+    if ausencia.estado == AusenciaProgramada.ESTADO_APROBADA:
+        RegistroAsistencia.objects.filter(
+            empleado=ausencia.empleado,
+            fecha__range=(ausencia.fecha_inicio, ausencia.fecha_fin),
+            estado=RegistroAsistencia.ESTADO_FALTA,
+        ).update(estado=RegistroAsistencia.ESTADO_PERMISO)
+
+    return JsonResponse({"status": "ok", "message": f"Ausencia {ausencia.get_estado_display().lower()}", "data": _serialize_ausencia(ausencia)})
+
+
 @login_required
 def exportar_reporte_excel(request):
     """
@@ -1845,11 +2097,58 @@ def _serialize_area(area):
     }
 
 
+def _serialize_empleado(empleado):
+    return {
+        "id": empleado.id,
+        "username": empleado.username,
+        "first_name": empleado.first_name,
+        "last_name": empleado.last_name,
+        "full_name": empleado.get_full_name() or empleado.username,
+        "dni": empleado.dni,
+        "email": empleado.email,
+        "rol": empleado.rol,
+        "rol_display": empleado.get_rol_display(),
+        "area_id": empleado.area_id,
+        "area": empleado.area.nombre if empleado.area else None,
+        "horario_id": empleado.horario_id,
+        "permite_remoto": empleado.permite_remoto,
+        "is_active": empleado.is_active,
+    }
+
+
 def _serialize_feriado(feriado):
     return {
         "id": feriado.id,
         "fecha": _as_date_iso(feriado.fecha),
         "descripcion": feriado.descripcion,
+    }
+
+
+def _serialize_justificacion(justificacion):
+    return {
+        "id": justificacion.id,
+        "asistencia_id": justificacion.asistencia_id,
+        "empleado_id": justificacion.asistencia.empleado_id,
+        "empleado": justificacion.asistencia.empleado.get_full_name() or justificacion.asistencia.empleado.username,
+        "fecha": _as_date_iso(justificacion.asistencia.fecha),
+        "motivo": justificacion.motivo,
+        "aprobada": justificacion.aprobada,
+        "creada_en": justificacion.creada_en.isoformat() if justificacion.creada_en else None,
+    }
+
+
+def _serialize_ausencia(permiso):
+    return {
+        "id": permiso.id,
+        "empleado_id": permiso.empleado_id,
+        "empleado": permiso.empleado.get_full_name() or permiso.empleado.username,
+        "fecha_inicio": _as_date_iso(permiso.fecha_inicio),
+        "fecha_fin": _as_date_iso(permiso.fecha_fin),
+        "motivo": permiso.motivo,
+        "estado": permiso.estado,
+        "estado_display": permiso.get_estado_display(),
+        "creada_por_id": permiso.creada_por_id,
+        "procesada_por_id": permiso.procesada_por_id,
     }
 
 
