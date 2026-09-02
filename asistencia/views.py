@@ -20,6 +20,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.contrib.auth import update_session_auth_hash
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, FormView, TemplateView
 from django.db import IntegrityError
@@ -281,6 +282,26 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # Obtener los permisos del empleado
         mis_permisos = AusenciaProgramada.objects.filter(empleado=usuario).order_by("-creada_en")[:10]
         context['mis_permisos'] = mis_permisos
+
+        if usuario.rol == CustomUser.ROL_RRHH:
+            empleados = CustomUser.objects.filter(is_active=True, rol__in=[CustomUser.ROL_EMPLEADO, CustomUser.ROL_PPHH])
+            asistencias_hoy = RegistroAsistencia.objects.filter(fecha=hoy, empleado__in=empleados)
+            context.update(
+                {
+                    "total_empleados": empleados.count(),
+                    "presentes": asistencias_hoy.exclude(estado=RegistroAsistencia.ESTADO_FALTA).count(),
+                    "tardanzas": asistencias_hoy.filter(estado=RegistroAsistencia.ESTADO_TARDANZA).count(),
+                    "faltas": asistencias_hoy.filter(estado=RegistroAsistencia.ESTADO_FALTA).count(),
+                    "permisos_pendientes": AusenciaProgramada.objects.filter(estado=AusenciaProgramada.ESTADO_PENDIENTE).count(),
+                    "justificaciones_pendientes": Justificacion.objects.filter(aprobada=False).count(),
+                    "areas_count": Area.objects.count(),
+                    "horarios_count": Horario.objects.count(),
+                    "actividades_recientes": RegistroAsistencia.objects.filter(
+                        fecha=hoy,
+                        hora_entrada__isnull=False,
+                    ).select_related("empleado").order_by("-hora_entrada")[:8],
+                }
+            )
         
         from django.db.models import Sum
         total_tarde = RegistroAsistencia.objects.filter(empleado=usuario).aggregate(total=Sum('minutos_tarde'))['total'] or 0
@@ -449,6 +470,8 @@ class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
             )
 
         asistencias_hoy = RegistroAsistencia.objects.filter(fecha=hoy)
+        permisos_pendientes = AusenciaProgramada.objects.filter(estado=AusenciaProgramada.ESTADO_PENDIENTE).count()
+        justificaciones_pendientes = Justificacion.objects.filter(aprobada=False).count()
         
         # Actividades recientes de hoy (últimas 10)
         actividades_recientes = asistencias_hoy.filter(hora_entrada__isnull=False).select_related('empleado').order_by('-hora_entrada')[:10]
@@ -459,6 +482,8 @@ class AdminDashboardView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
                 "presentes": asistencias_hoy.exclude(estado=RegistroAsistencia.ESTADO_FALTA).count(),
                 "tardanzas": asistencias_hoy.filter(estado=RegistroAsistencia.ESTADO_TARDANZA).count(),
                 "faltas": asistencias_hoy.filter(estado=RegistroAsistencia.ESTADO_FALTA).count(),
+                "permisos_pendientes": permisos_pendientes,
+                "justificaciones_pendientes": justificaciones_pendientes,
                 "horas_hoy": formatear_duracion(total_hoy),
                 "horas_semana": formatear_duracion(total_semana),
                 "horas_mes": formatear_duracion(total_mes),
@@ -1754,6 +1779,315 @@ def eliminar_feriado(request, feriado_id: int):
     feriado = get_object_or_404(DiaFeriado, id=feriado_id)
     feriado.delete()
     return redirect("horarios")
+
+
+def _parse_json_body(request):
+    if request.body in (None, b''):
+        return {}
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError as exc:
+        raise ValueError("JSON inválido") from exc
+    if isinstance(data, dict):
+        return data
+    raise ValueError("El cuerpo JSON debe ser un objeto")
+
+
+def _as_time_iso(value):
+    if not value:
+        return None
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+    return str(value)
+
+
+def _as_date_iso(value):
+    if not value:
+        return None
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+    return str(value)
+
+
+def _as_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {'1', 'true', 'yes', 'si', 'sí', 'on'}
+    return bool(value)
+
+
+def _serialize_horario(horario):
+    return {
+        "id": horario.id,
+        "nombre": horario.nombre,
+        "tipo_horario": horario.tipo_horario,
+        "hora_entrada": _as_time_iso(horario.hora_entrada),
+        "hora_salida": _as_time_iso(horario.hora_salida),
+        "tolerancia_minutos": horario.tolerancia_minutos,
+        "tardanza_maxima_minutos": horario.tardanza_maxima_minutos,
+        "permite_entrada_tardia": horario.permite_entrada_tardia,
+        "lunes": horario.lunes,
+        "martes": horario.martes,
+        "miercoles": horario.miercoles,
+        "jueves": horario.jueves,
+        "viernes": horario.viernes,
+        "sabado": horario.sabado,
+        "domingo": horario.domingo,
+    }
+
+
+def _serialize_area(area):
+    return {
+        "id": area.id,
+        "nombre": area.nombre,
+        "descripcion": area.descripcion,
+    }
+
+
+def _serialize_feriado(feriado):
+    return {
+        "id": feriado.id,
+        "fecha": _as_date_iso(feriado.fecha),
+        "descripcion": feriado.descripcion,
+    }
+
+
+def _require_admin_rrhh(request):
+    if request.user.rol not in [CustomUser.ROL_ADMIN, CustomUser.ROL_RRHH]:
+        return False
+    return True
+
+
+@csrf_exempt
+@login_required
+def api_horarios(request):
+    if not _require_admin_rrhh(request):
+        return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
+
+    if request.method == 'GET':
+        horarios = Horario.objects.all().order_by('nombre')
+        return JsonResponse({'success': True, 'data': [_serialize_horario(h) for h in horarios]}, safe=False)
+
+    if request.method == 'POST':
+        try:
+            datos = _parse_json_body(request)
+        except ValueError as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+        campos = {
+            'nombre': datos.get('nombre'),
+            'tipo_horario': datos.get('tipo_horario', 'fijo'),
+            'hora_entrada': datos.get('hora_entrada'),
+            'hora_salida': datos.get('hora_salida'),
+            'tolerancia_minutos': int(datos.get('tolerancia_minutos', 0) or 0),
+            'tardanza_maxima_minutos': int(datos.get('tardanza_maxima_minutos', 30) or 30),
+            'permite_entrada_tardia': _as_bool(datos.get('permite_entrada_tardia', False)),
+        }
+        for dia in ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']:
+            campos[dia] = _as_bool(datos.get(dia, False))
+
+        try:
+            horario = Horario.objects.create(**campos)
+            return JsonResponse({'success': True, 'message': 'Horario creado correctamente', 'data': _serialize_horario(horario)}, status=201)
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'message': mensajes_validation_error(exc)}, status=400)
+        except Exception as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+    return JsonResponse({'success': False, 'message': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_horario_detalle(request, horario_id: int):
+    if not _require_admin_rrhh(request):
+        return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
+
+    horario = get_object_or_404(Horario, pk=horario_id)
+
+    if request.method == 'GET':
+        return JsonResponse({'success': True, 'data': _serialize_horario(horario)})
+
+    if request.method in {'PUT', 'PATCH'}:
+        try:
+            datos = _parse_json_body(request)
+        except ValueError as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+        for campo in ['nombre', 'tipo_horario', 'hora_entrada', 'hora_salida']:
+            if campo in datos:
+                setattr(horario, campo, datos[campo])
+
+        if 'tolerancia_minutos' in datos:
+            horario.tolerancia_minutos = int(datos['tolerancia_minutos'])
+        if 'tardanza_maxima_minutos' in datos:
+            horario.tardanza_maxima_minutos = int(datos['tardanza_maxima_minutos'])
+        if 'permite_entrada_tardia' in datos:
+            horario.permite_entrada_tardia = _as_bool(datos['permite_entrada_tardia'])
+
+        for dia in ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']:
+            if dia in datos:
+                setattr(horario, dia, _as_bool(datos[dia]))
+
+        try:
+            horario.full_clean()
+            horario.save()
+            return JsonResponse({'success': True, 'message': 'Horario actualizado correctamente', 'data': _serialize_horario(horario)})
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'message': mensajes_validation_error(exc)}, status=400)
+
+    if request.method == 'DELETE':
+        horario.delete()
+        return JsonResponse({'success': True, 'message': 'Horario eliminado correctamente'})
+
+    return JsonResponse({'success': False, 'message': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_areas(request):
+    if not _require_admin_rrhh(request):
+        return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
+
+    if request.method == 'GET':
+        areas = Area.objects.all().order_by('nombre')
+        return JsonResponse({'success': True, 'data': [_serialize_area(a) for a in areas]}, safe=False)
+
+    if request.method == 'POST':
+        try:
+            datos = _parse_json_body(request)
+        except ValueError as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+        nombre = (datos.get('nombre') or '').strip()
+        descripcion = datos.get('descripcion', '')
+        if not nombre:
+            return JsonResponse({'success': False, 'message': 'El nombre del área es obligatorio'}, status=400)
+
+        try:
+            area = Area.objects.create(nombre=nombre, descripcion=descripcion)
+            return JsonResponse({'success': True, 'message': 'Área creada correctamente', 'data': _serialize_area(area)}, status=201)
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'message': mensajes_validation_error(exc)}, status=400)
+        except Exception as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+    return JsonResponse({'success': False, 'message': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_area_detalle(request, area_id: int):
+    if not _require_admin_rrhh(request):
+        return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
+
+    area = get_object_or_404(Area, pk=area_id)
+
+    if request.method == 'GET':
+        return JsonResponse({'success': True, 'data': _serialize_area(area)})
+
+    if request.method in {'PUT', 'PATCH'}:
+        try:
+            datos = _parse_json_body(request)
+        except ValueError as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+        if 'nombre' in datos:
+            area.nombre = (datos['nombre'] or '').strip()
+        if 'descripcion' in datos:
+            area.descripcion = datos.get('descripcion', '')
+
+        if not area.nombre:
+            return JsonResponse({'success': False, 'message': 'El nombre del área es obligatorio'}, status=400)
+
+        try:
+            area.full_clean()
+            area.save()
+            return JsonResponse({'success': True, 'message': 'Área actualizada correctamente', 'data': _serialize_area(area)})
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'message': mensajes_validation_error(exc)}, status=400)
+
+    if request.method == 'DELETE':
+        area.delete()
+        return JsonResponse({'success': True, 'message': 'Área eliminada correctamente'})
+
+    return JsonResponse({'success': False, 'message': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_feriados(request):
+    if not _require_admin_rrhh(request):
+        return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
+
+    if request.method == 'GET':
+        feriados = DiaFeriado.objects.all().order_by('-fecha')
+        return JsonResponse({'success': True, 'data': [_serialize_feriado(f) for f in feriados]}, safe=False)
+
+    if request.method == 'POST':
+        try:
+            datos = _parse_json_body(request)
+        except ValueError as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+        fecha = datos.get('fecha')
+        descripcion = (datos.get('descripcion') or '').strip()
+        if not fecha:
+            return JsonResponse({'success': False, 'message': 'La fecha es obligatoria'}, status=400)
+        if not descripcion:
+            return JsonResponse({'success': False, 'message': 'La descripción es obligatoria'}, status=400)
+
+        try:
+            feriado = DiaFeriado.objects.create(fecha=fecha, descripcion=descripcion)
+            return JsonResponse({'success': True, 'message': 'Feriado creado correctamente', 'data': _serialize_feriado(feriado)}, status=201)
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'message': mensajes_validation_error(exc)}, status=400)
+        except Exception as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+    return JsonResponse({'success': False, 'message': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_feriado_detalle(request, feriado_id: int):
+    if not _require_admin_rrhh(request):
+        return JsonResponse({'success': False, 'message': 'Permiso denegado'}, status=403)
+
+    feriado = get_object_or_404(DiaFeriado, pk=feriado_id)
+
+    if request.method == 'GET':
+        return JsonResponse({'success': True, 'data': _serialize_feriado(feriado)})
+
+    if request.method in {'PUT', 'PATCH'}:
+        try:
+            datos = _parse_json_body(request)
+        except ValueError as exc:
+            return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+
+        if 'fecha' in datos:
+            feriado.fecha = datos['fecha']
+        if 'descripcion' in datos:
+            feriado.descripcion = (datos['descripcion'] or '').strip()
+
+        if not feriado.fecha:
+            return JsonResponse({'success': False, 'message': 'La fecha es obligatoria'}, status=400)
+        if not feriado.descripcion:
+            return JsonResponse({'success': False, 'message': 'La descripción es obligatoria'}, status=400)
+
+        try:
+            feriado.full_clean()
+            feriado.save()
+            return JsonResponse({'success': True, 'message': 'Feriado actualizado correctamente', 'data': _serialize_feriado(feriado)})
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'message': mensajes_validation_error(exc)}, status=400)
+
+    if request.method == 'DELETE':
+        feriado.delete()
+        return JsonResponse({'success': True, 'message': 'Feriado eliminado correctamente'})
+
+    return JsonResponse({'success': False, 'message': 'Método no permitido'}, status=405)
 
 
 @login_required

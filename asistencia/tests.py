@@ -145,6 +145,128 @@ class ExportarExcelTests(TestCase):
         self.assertTrue(response['Content-Disposition'].startswith('attachment; filename="Reporte_Asistencias_'))
 
 
+class HorarioAreaFeriadoApiTests(TestCase):
+    def setUp(self):
+        self.admin = CustomUser.objects.create_user(
+            username="admin_api",
+            password="test1234",
+            dni="11111111",
+            rol=CustomUser.ROL_ADMIN,
+        )
+        self.rrhh = CustomUser.objects.create_user(
+            username="rrhh_api",
+            password="test1234",
+            dni="22222222",
+            rol=CustomUser.ROL_RRHH,
+        )
+        self.area = Area.objects.create(nombre="Soporte", descripcion="Area soporte")
+        self.horario = Horario.objects.create(
+            nombre="Turno mañana",
+            hora_entrada=time(8, 0),
+            hora_salida=time(17, 0),
+            tolerancia_minutos=10,
+        )
+        self.feriado = DiaFeriado.objects.create(
+            fecha=date(2026, 6, 20),
+            descripcion="Prueba feriado",
+        )
+
+    def test_horarios_api_crud_admin(self):
+        self.client.login(username="admin_api", password="test1234")
+
+        response = self.client.get("/api/horarios/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
+
+        response = self.client.post(
+            "/api/horarios/",
+            data=json.dumps({
+                "nombre": "Turno prueba",
+                "hora_entrada": "09:00",
+                "hora_salida": "18:00",
+                "tolerancia_minutos": 15,
+                "lunes": True,
+                "martes": True,
+                "miercoles": True,
+                "jueves": True,
+                "viernes": True,
+                "sabado": False,
+                "domingo": False,
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertTrue(data["success"])
+        horario_id = data["data"]["id"]
+
+        response = self.client.patch(
+            f"/api/horarios/{horario_id}/",
+            data=json.dumps({"nombre": "Turno actualizado"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["nombre"], "Turno actualizado")
+
+        response = self.client.delete(f"/api/horarios/{horario_id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Horario.objects.filter(pk=horario_id).exists())
+
+    def test_areas_api_crud_rrhh(self):
+        self.client.login(username="rrhh_api", password="test1234")
+
+        response = self.client.get("/api/areas/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
+
+        response = self.client.post(
+            "/api/areas/",
+            data=json.dumps({"nombre": "Contabilidad", "descripcion": "Area contable"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        area_id = response.json()["data"]["id"]
+
+        response = self.client.put(
+            f"/api/areas/{area_id}/",
+            data=json.dumps({"nombre": "Finanzas", "descripcion": "Area financiera"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["nombre"], "Finanzas")
+
+        response = self.client.delete(f"/api/areas/{area_id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Area.objects.filter(pk=area_id).exists())
+
+    def test_feriados_api_crud_admin(self):
+        self.client.login(username="admin_api", password="test1234")
+
+        response = self.client.get("/api/feriados/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
+
+        response = self.client.post(
+            "/api/feriados/",
+            data=json.dumps({"fecha": "2026-07-05", "descripcion": "Feriado nacional"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        feriado_id = response.json()["data"]["id"]
+
+        response = self.client.patch(
+            f"/api/feriados/{feriado_id}/",
+            data=json.dumps({"descripcion": "Festividad modificada"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["descripcion"], "Festividad modificada")
+
+        response = self.client.delete(f"/api/feriados/{feriado_id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(DiaFeriado.objects.filter(pk=feriado_id).exists())
+
+
 class RRHHAndPermissionsTests(TestCase):
     def setUp(self):
         self.admin = CustomUser.objects.create_user(

@@ -47,6 +47,12 @@ urlpatterns = [
     
     # API endpoints
     path("api/empleado/<int:empleado_id>/actualizar/", views.actualizar_empleado_api, name="actualizar_empleado_api"),
+    path("api/horarios/", views.api_horarios, name="api_horarios"),
+    path("api/horarios/<int:horario_id>/", views.api_horario_detalle, name="api_horario_detalle"),
+    path("api/areas/", views.api_areas, name="api_areas"),
+    path("api/areas/<int:area_id>/", views.api_area_detalle, name="api_area_detalle"),
+    path("api/feriados/", views.api_feriados, name="api_feriados"),
+    path("api/feriados/<int:feriado_id>/", views.api_feriado_detalle, name="api_feriado_detalle"),
     
     # Reportes y justificaciones
     path("asistencias/reporte/", views.ReporteAsistenciasView.as_view(), name="reporte"),
